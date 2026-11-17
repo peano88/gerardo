@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -109,7 +110,7 @@ func renderChange(c *gerrit.ChangeInfo, width int) string {
 
 	if hasRev {
 		b.WriteString(headingStyle.Render(fmt.Sprintf("Files (%d)", len(rev.Files))) + "\n")
-		for _, path := range sortedKeys(rev.Files) {
+		for _, path := range rev.SortedPaths() {
 			f := rev.Files[path]
 			st := f.Status
 			if st == "" {
@@ -129,5 +130,77 @@ func renderChange(c *gerrit.ChangeInfo, width int) string {
 		b.WriteString(wrap.Render(strings.TrimSpace(m.Message)) + "\n")
 	}
 
+	return b.String()
+}
+
+// renderDiff renders a unified diff, keeping context unchanged lines around
+// each change; a negative context renders the whole file.
+func renderDiff(path string, d *gerrit.DiffInfo, context int) string {
+	var b strings.Builder
+
+	header := path
+	if d.MetaA != nil && d.MetaB != nil && d.MetaA.Name != d.MetaB.Name {
+		header = d.MetaA.Name + " → " + d.MetaB.Name
+	}
+	fmt.Fprintf(&b, "%s %s\n\n", titleStyle.Render(header), dimStyle.Render(strings.ToLower(d.ChangeType)))
+	if d.Binary {
+		b.WriteString(dimStyle.Render("binary file") + "\n")
+		return b.String()
+	}
+
+	gutter := func(a, b int) string {
+		num := func(n int) string {
+			if n == 0 {
+				return ""
+			}
+			return strconv.Itoa(n)
+		}
+		return dimStyle.Render(fmt.Sprintf("%5s %5s ", num(a), num(b)))
+	}
+	line := func(s string) string {
+		return strings.ReplaceAll(s, "\t", "    ")
+	}
+
+	aLine, bLine := 1, 1
+	skip := func(n int) {
+		b.WriteString(dimStyle.Render(fmt.Sprintf("%11s ⋯ %d unchanged lines", "", n)) + "\n")
+		aLine += n
+		bLine += n
+	}
+	common := func(lines []string) {
+		for _, l := range lines {
+			b.WriteString(gutter(aLine, bLine) + "  " + line(l) + "\n")
+			aLine++
+			bLine++
+		}
+	}
+
+	for i, c := range d.Content {
+		leading, trailing := context, context
+		if i == 0 {
+			leading = 0
+		}
+		if i == len(d.Content)-1 {
+			trailing = 0
+		}
+		if context < 0 || len(c.AB) <= leading+trailing {
+			common(c.AB)
+		} else {
+			common(c.AB[:leading])
+			skip(len(c.AB) - leading - trailing)
+			common(c.AB[len(c.AB)-trailing:])
+		}
+		for _, l := range c.A {
+			b.WriteString(gutter(aLine, 0) + delStyle.Render("- "+line(l)) + "\n")
+			aLine++
+		}
+		for _, l := range c.B {
+			b.WriteString(gutter(0, bLine) + addStyle.Render("+ "+line(l)) + "\n")
+			bLine++
+		}
+		if c.Skip > 0 {
+			skip(c.Skip)
+		}
+	}
 	return b.String()
 }

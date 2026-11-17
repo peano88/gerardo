@@ -1,6 +1,7 @@
 package gerrit
 
 import (
+	"slices"
 	"strings"
 	"time"
 )
@@ -129,6 +130,41 @@ type ChangeInfo struct {
 	CurrentRevision        string                  `json:"current_revision"`
 	Revisions              map[string]RevisionInfo `json:"revisions"`
 	Messages               []ChangeMessageInfo     `json:"messages"`
+}
+
+// SortedPaths returns the file paths of the revision in a stable order.
+func (r RevisionInfo) SortedPaths() []string {
+	paths := make([]string, 0, len(r.Files))
+	for p := range r.Files {
+		paths = append(paths, p)
+	}
+	slices.Sort(paths)
+	return paths
+}
+
+// DiffFileMeta describes one side of a file diff.
+type DiffFileMeta struct {
+	Name        string `json:"name"`
+	ContentType string `json:"content_type"`
+	Lines       int    `json:"lines"`
+}
+
+// DiffContent is a chunk of a diff: common lines (AB), lines only on the
+// parent side (A), lines only on the revision side (B), or skipped common lines.
+type DiffContent struct {
+	AB   []string `json:"ab"`
+	A    []string `json:"a"`
+	B    []string `json:"b"`
+	Skip int      `json:"skip"`
+}
+
+// DiffInfo is the diff of a file between a revision and its parent.
+type DiffInfo struct {
+	MetaA      *DiffFileMeta `json:"meta_a"`
+	MetaB      *DiffFileMeta `json:"meta_b"`
+	ChangeType string        `json:"change_type"`
+	Binary     bool          `json:"binary"`
+	Content    []DiffContent `json:"content"`
 }
 
 // Current returns the current revision, if it was requested.

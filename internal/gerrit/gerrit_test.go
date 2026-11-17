@@ -47,6 +47,29 @@ func TestNetrcCredentialsNoMatch(t *testing.T) {
 	}
 }
 
+func TestGetDiff(t *testing.T) {
+	var gotPath, gotContext string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath, gotContext = r.URL.EscapedPath(), r.URL.Query().Get("context")
+		_, _ = w.Write([]byte(")]}'\n" + `{"change_type": "MODIFIED", "content": [{"ab": ["a"]}, {"a": ["b"], "b": ["c"]}, {"skip": 4}]}`))
+	}))
+	defer srv.Close()
+
+	diff, err := NewClient(srv.URL, "u", "p").GetDiff(context.Background(), "42", "abc", "pkg/sub/main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "/a/changes/42/revisions/abc/files/pkg%2Fsub%2Fmain.go/diff"; gotPath != want {
+		t.Fatalf("path: got %q, want %q", gotPath, want)
+	}
+	if gotContext != "ALL" {
+		t.Fatalf("context: got %q, want ALL", gotContext)
+	}
+	if len(diff.Content) != 3 || diff.Content[1].B[0] != "c" || diff.Content[2].Skip != 4 {
+		t.Fatalf("unexpected diff: %+v", diff)
+	}
+}
+
 func TestGetChange(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if user, pass, ok := r.BasicAuth(); !ok || user != "alice" || pass != "pw" {

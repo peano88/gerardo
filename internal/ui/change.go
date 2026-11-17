@@ -1,0 +1,98 @@
+package ui
+
+import (
+	"context"
+	"fmt"
+	"strconv"
+
+	"github.com/charmbracelet/bubbles/viewport"
+	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/peano88/gerrit-tui/internal/gerrit"
+)
+
+type changeLoadedMsg struct {
+	number int
+	change *gerrit.ChangeInfo
+	err    error
+}
+
+type changeScreen struct {
+	client   *gerrit.Client
+	number   int
+	change   *gerrit.ChangeInfo
+	viewport viewport.Model
+	loading  bool
+	err      error
+}
+
+func newChangeScreen(client *gerrit.Client, number int) *changeScreen {
+	return &changeScreen{client: client, number: number, viewport: viewport.New(0, 0)}
+}
+
+func (s *changeScreen) Init() tea.Cmd {
+	s.loading = true
+	client, number := s.client, s.number
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		defer cancel()
+		change, err := client.GetChange(ctx, strconv.Itoa(number))
+		return changeLoadedMsg{number: number, change: change, err: err}
+	}
+}
+
+func (s *changeScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
+	switch msg := msg.(type) {
+	case changeLoadedMsg:
+		if msg.number != s.number {
+			return s, nil
+		}
+		s.loading, s.err = false, msg.err
+		if msg.err == nil {
+			s.change = msg.change
+			s.render()
+			s.viewport.GotoTop()
+		}
+		return s, nil
+
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "q", "esc", "backspace":
+			return s, pop
+		case "r":
+			return s, s.Init()
+		case "f", "enter":
+			if s.change == nil {
+				return s, nil
+			}
+			if _, ok := s.change.Current(); !ok {
+				return s, nil
+			}
+			return s, push(newFilesScreen(s.client, s.change))
+		}
+	}
+
+	var cmd tea.Cmd
+	s.viewport, cmd = s.viewport.Update(msg)
+	return s, cmd
+}
+
+func (s *changeScreen) View() string {
+	return s.viewport.View()
+}
+
+func (s *changeScreen) Status() string {
+	return status(s.loading, s.err,
+		fmt.Sprintf("%3.0f%% · ↑/↓ scroll · f files · r reload · esc back", s.viewport.ScrollPercent()*100))
+}
+
+func (s *changeScreen) SetSize(width, height int) {
+	s.viewport.Width, s.viewport.Height = width, height
+	s.render()
+}
+
+func (s *changeScreen) render() {
+	if s.change != nil {
+		s.viewport.SetContent(renderChange(s.change, s.viewport.Width))
+	}
+}
