@@ -80,13 +80,47 @@ func (c *Client) GetDiff(ctx context.Context, change, revision, path string) (*D
 	return &diff, nil
 }
 
+// Self fetches the account of the authenticated user.
+func (c *Client) Self(ctx context.Context) (*AccountInfo, error) {
+	var account AccountInfo
+	if err := c.get(ctx, "/accounts/self", &account); err != nil {
+		return nil, fmt.Errorf("get own account: %w", err)
+	}
+	return &account, nil
+}
+
+// SetReview posts votes and a message on a revision.
+func (c *Client) SetReview(ctx context.Context, change, revision string, review ReviewInput) error {
+	p := fmt.Sprintf("/changes/%s/revisions/%s/review", url.PathEscape(change), url.PathEscape(revision))
+	if err := c.do(ctx, http.MethodPost, p, review, nil); err != nil {
+		return fmt.Errorf("post review: %w", err)
+	}
+	return nil
+}
+
 func (c *Client) get(ctx context.Context, path string, out any) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/a"+path, nil)
+	return c.do(ctx, http.MethodGet, path, nil, out)
+}
+
+func (c *Client) do(ctx context.Context, method, path string, in, out any) error {
+	var body io.Reader
+	if in != nil {
+		b, err := json.Marshal(in)
+		if err != nil {
+			return fmt.Errorf("encode request: %w", err)
+		}
+		body = bytes.NewReader(b)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+"/a"+path, body)
 	if err != nil {
 		return err
 	}
 	req.SetBasicAuth(c.user, c.password)
 	req.Header.Set("Accept", "application/json")
+	if in != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 
 	resp, err := c.http.Do(req)
 	if err != nil {
@@ -94,12 +128,15 @@ func (c *Client) get(ctx context.Context, path string, out any) error {
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("read response: %w", err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("%s: %s", resp.Status, strings.TrimSpace(string(body)))
+		return fmt.Errorf("%s: %s", resp.Status, strings.TrimSpace(string(respBody)))
 	}
-	return json.Unmarshal(bytes.TrimPrefix(body, xssiPrefix), out)
+	if out == nil {
+		return nil
+	}
+	return json.Unmarshal(bytes.TrimPrefix(respBody, xssiPrefix), out)
 }

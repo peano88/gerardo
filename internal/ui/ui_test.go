@@ -1,7 +1,9 @@
 package ui
 
 import (
+	"errors"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -104,6 +106,48 @@ func TestTablesWithRowsBeforeSize(t *testing.T) {
 	d.Update(changesLoadedMsg{changes: []gerrit.ChangeInfo{*change}})
 	if v := d.View(); !strings.Contains(v, "42") {
 		t.Fatalf("dashboard: got %q", v)
+	}
+}
+
+func TestReviewScreen(t *testing.T) {
+	change := &gerrit.ChangeInfo{
+		Number:          42,
+		CurrentRevision: "abc",
+		Labels: map[string]gerrit.LabelInfo{
+			"Code-Review": {All: []gerrit.ApprovalInfo{{AccountInfo: gerrit.AccountInfo{AccountID: 7}, Value: 1}}},
+			"Verified":    {},
+		},
+		PermittedLabels: map[string][]string{
+			"Code-Review": {"+2", "-2", " 0", "-1", "+1"},
+			"Verified":    {"-1", " 0", "+1"},
+		},
+	}
+	s := newReviewScreen(nil, change)
+	s.setSelf(&gerrit.AccountInfo{AccountID: 7})
+
+	cr, v := s.labels[0], s.labels[1]
+	if cr.name != "Code-Review" || !slices.Equal(cr.values, []int{-2, -1, 0, 1, 2}) {
+		t.Fatalf("unexpected label: %+v", cr)
+	}
+	if cr.current != 1 || cr.selected != 1 || v.current != 0 {
+		t.Fatalf("current votes not prefilled: CR %d/%d, V %d", cr.current, cr.selected, v.current)
+	}
+
+	if _, err := s.reviewInput(); !errors.Is(err, errEmptyReview) {
+		t.Fatalf("unchanged review: got %v, want errEmptyReview", err)
+	}
+
+	cr.move(1)
+	cr.move(1)
+	if cr.selected != 2 {
+		t.Fatalf("move should stop at +2, got %d", cr.selected)
+	}
+	in, err := s.reviewInput()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(in.Labels) != 1 || in.Labels["Code-Review"] != 2 {
+		t.Fatalf("only changed votes should be sent, got %+v", in.Labels)
 	}
 }
 

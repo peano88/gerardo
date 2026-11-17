@@ -2,6 +2,7 @@ package gerrit
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -67,6 +68,50 @@ func TestGetDiff(t *testing.T) {
 	}
 	if len(diff.Content) != 3 || diff.Content[1].B[0] != "c" || diff.Content[2].Skip != 4 {
 		t.Fatalf("unexpected diff: %+v", diff)
+	}
+}
+
+func TestSetReview(t *testing.T) {
+	var gotMethod, gotPath, gotContentType string
+	var got ReviewInput
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath, gotContentType = r.Method, r.URL.Path, r.Header.Get("Content-Type")
+		if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		_, _ = w.Write([]byte(")]}'\n{}"))
+	}))
+	defer srv.Close()
+
+	in := ReviewInput{Message: "LGTM", Labels: map[string]int{"Code-Review": 2}}
+	if err := NewClient(srv.URL, "u", "p").SetReview(context.Background(), "42", "abc", in); err != nil {
+		t.Fatal(err)
+	}
+	if gotMethod != http.MethodPost || gotPath != "/a/changes/42/revisions/abc/review" || gotContentType != "application/json" {
+		t.Fatalf("unexpected request: %s %s (%s)", gotMethod, gotPath, gotContentType)
+	}
+	if got.Message != "LGTM" || got.Labels["Code-Review"] != 2 {
+		t.Fatalf("unexpected body: %+v", got)
+	}
+}
+
+func TestLabelHelpers(t *testing.T) {
+	l := LabelInfo{
+		All:    []ApprovalInfo{{AccountInfo: AccountInfo{AccountID: 7}, Value: -1}},
+		Values: map[string]string{"-1": "I would prefer this is not merged", " 0": "No score", "+2": "Looks good to me, approved"},
+	}
+	if v := l.VoteOf(7); v != -1 {
+		t.Fatalf("VoteOf(7) = %d", v)
+	}
+	if v := l.VoteOf(8); v != 0 {
+		t.Fatalf("VoteOf(8) = %d", v)
+	}
+	if d := l.Description(2); d != "Looks good to me, approved" {
+		t.Fatalf("Description(2) = %q", d)
+	}
+	if d := l.Description(0); d != "No score" {
+		t.Fatalf("Description(0) = %q", d)
 	}
 }
 

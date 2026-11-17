@@ -55,12 +55,20 @@ func (s *changeScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
 		}
 		return s, nil
 
+	case changeUpdatedMsg:
+		return s, s.Init()
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "esc", "backspace":
 			return s, pop
 		case "r":
 			return s, s.Init()
+		case "v":
+			if s.change == nil {
+				return s, nil
+			}
+			return s, push(newReviewScreen(s.client, s.change))
 		case "f", "enter":
 			if s.change == nil {
 				return s, nil
@@ -83,7 +91,7 @@ func (s *changeScreen) View() string {
 
 func (s *changeScreen) Status() string {
 	return status(s.loading, s.err,
-		fmt.Sprintf("%3.0f%% · ↑/↓ scroll · f files · r reload · esc back", s.viewport.ScrollPercent()*100))
+		fmt.Sprintf("%3.0f%% · ↑/↓ scroll · f files · v vote · r reload · esc back", s.viewport.ScrollPercent()*100))
 }
 
 func (s *changeScreen) SetSize(width, height int) {

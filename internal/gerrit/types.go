@@ -2,6 +2,7 @@ package gerrit
 
 import (
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -57,12 +58,44 @@ type ApprovalInfo struct {
 
 // LabelInfo summarizes the votes on a label.
 type LabelInfo struct {
-	Approved    *AccountInfo   `json:"approved"`
-	Rejected    *AccountInfo   `json:"rejected"`
-	Recommended *AccountInfo   `json:"recommended"`
-	Disliked    *AccountInfo   `json:"disliked"`
-	Optional    bool           `json:"optional"`
-	All         []ApprovalInfo `json:"all"`
+	Approved    *AccountInfo      `json:"approved"`
+	Rejected    *AccountInfo      `json:"rejected"`
+	Recommended *AccountInfo      `json:"recommended"`
+	Disliked    *AccountInfo      `json:"disliked"`
+	Optional    bool              `json:"optional"`
+	All         []ApprovalInfo    `json:"all"`
+	Values      map[string]string `json:"values"`
+}
+
+// VoteOf returns the vote of an account on the label, 0 when it has not voted.
+func (l LabelInfo) VoteOf(accountID int) int {
+	for _, a := range l.All {
+		if a.AccountID == accountID {
+			return a.Value
+		}
+	}
+	return 0
+}
+
+// Description returns the meaning of a vote value, such as "Looks good to me".
+func (l LabelInfo) Description(value int) string {
+	for k, v := range l.Values {
+		if n, err := ParseVote(k); err == nil && n == value {
+			return v
+		}
+	}
+	return ""
+}
+
+// ParseVote parses a Gerrit vote value such as "+2", " 0" or "-1".
+func ParseVote(s string) (int, error) {
+	return strconv.Atoi(strings.TrimPrefix(strings.TrimSpace(s), "+"))
+}
+
+// ReviewInput is the payload to vote and comment on a revision.
+type ReviewInput struct {
+	Message string         `json:"message,omitempty"`
+	Labels  map[string]int `json:"labels,omitempty"`
 }
 
 // Summary returns the decisive vote of the label, such as "+2" or "-1".
@@ -127,6 +160,7 @@ type ChangeInfo struct {
 	Deletions              int                     `json:"deletions"`
 	UnresolvedCommentCount int                     `json:"unresolved_comment_count"`
 	Labels                 map[string]LabelInfo    `json:"labels"`
+	PermittedLabels        map[string][]string     `json:"permitted_labels"`
 	CurrentRevision        string                  `json:"current_revision"`
 	Revisions              map[string]RevisionInfo `json:"revisions"`
 	Messages               []ChangeMessageInfo     `json:"messages"`
