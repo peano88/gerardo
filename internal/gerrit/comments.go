@@ -32,6 +32,19 @@ type CommentInfo struct {
 	Author     *AccountInfo  `json:"author"`
 	PatchSet   int           `json:"patch_set"`
 	Unresolved bool          `json:"unresolved"`
+	Draft      bool          `json:"-"`
+}
+
+// CommentInput is the payload to create or update a draft comment. A zero
+// Line makes a file-level comment.
+type CommentInput struct {
+	ID         string `json:"id,omitempty"`
+	Path       string `json:"path"`
+	Side       string `json:"side,omitempty"`
+	Line       int    `json:"line,omitempty"`
+	InReplyTo  string `json:"in_reply_to,omitempty"`
+	Message    string `json:"message"`
+	Unresolved *bool  `json:"unresolved,omitempty"`
 }
 
 // OnParent reports whether the comment is on the parent (left) side of the diff.
@@ -90,19 +103,32 @@ func BuildThreads(comments []CommentInfo) []Thread {
 
 // ThreadsForRevision returns the threads to show on path when viewing patch
 // set number: threads started on that patch set, plus unresolved threads of
-// earlier patch sets ported onto it.
-func ThreadsForRevision(path string, number int, comments, ported map[string][]CommentInfo) []Thread {
+// earlier patch sets ported onto it, with the user's drafts attached.
+// Ported comments take precedence so that their lines match the revision.
+func ThreadsForRevision(path string, number int, comments, ported, drafts map[string][]CommentInfo) []Thread {
+	seen := map[string]bool{}
+	portedIDs := map[string]bool{}
+	var all []CommentInfo
+	add := func(list []CommentInfo, isPorted bool) {
+		for _, c := range list {
+			if isPorted {
+				portedIDs[c.ID] = true
+			}
+			if !seen[c.ID] {
+				seen[c.ID] = true
+				all = append(all, c)
+			}
+		}
+	}
+	add(ported[path], true)
+	add(comments[path], false)
+	add(drafts[path], false)
+
 	var threads []Thread
-	for _, t := range BuildThreads(comments[path]) {
-		if t.Root().PatchSet == number {
+	for _, t := range BuildThreads(all) {
+		if root := t.Root(); root.PatchSet == number || portedIDs[root.ID] {
 			threads = append(threads, t)
 		}
 	}
-	for _, t := range BuildThreads(ported[path]) {
-		if t.Root().PatchSet != number {
-			threads = append(threads, t)
-		}
-	}
-	slices.SortStableFunc(threads, func(a, b Thread) int { return cmp.Compare(a.Root().Line, b.Root().Line) })
 	return threads
 }

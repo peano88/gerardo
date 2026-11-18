@@ -96,7 +96,11 @@ func ParseVote(s string) (int, error) {
 type ReviewInput struct {
 	Message string         `json:"message,omitempty"`
 	Labels  map[string]int `json:"labels,omitempty"`
+	Drafts  string         `json:"drafts,omitempty"`
 }
+
+// PublishAllDrafts publishes the user's drafts of every revision with a review.
+const PublishAllDrafts = "PUBLISH_ALL_REVISIONS"
 
 // Summary returns the decisive vote of the label, such as "+2" or "-1".
 func (l LabelInfo) Summary() string {

@@ -18,6 +18,8 @@ var (
 	addStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
 	delStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
 	errStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Bold(true)
+	draftStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("3")).Bold(true)
+	cursorStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Bold(true)
 )
 
 func voteStyle(v int) lipgloss.Style {

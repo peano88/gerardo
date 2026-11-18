@@ -100,6 +100,47 @@ func (c *Client) PortedComments(ctx context.Context, change, revision string) (m
 	return withPaths(comments), nil
 }
 
+// ListDrafts fetches the draft comments of the authenticated user on all revisions.
+func (c *Client) ListDrafts(ctx context.Context, change string) (map[string][]CommentInfo, error) {
+	var drafts map[string][]CommentInfo
+	if err := c.get(ctx, fmt.Sprintf("/changes/%s/drafts", url.PathEscape(change)), &drafts); err != nil {
+		return nil, fmt.Errorf("list drafts: %w", err)
+	}
+	for _, list := range drafts {
+		for i := range list {
+			list[i].Draft = true
+		}
+	}
+	return withPaths(drafts), nil
+}
+
+// CreateDraft creates a draft comment on a revision.
+func (c *Client) CreateDraft(ctx context.Context, change, revision string, in CommentInput) error {
+	p := fmt.Sprintf("/changes/%s/revisions/%s/drafts", url.PathEscape(change), url.PathEscape(revision))
+	if err := c.do(ctx, http.MethodPut, p, in, nil); err != nil {
+		return fmt.Errorf("create draft: %w", err)
+	}
+	return nil
+}
+
+// UpdateDraft replaces a draft comment.
+func (c *Client) UpdateDraft(ctx context.Context, change, revision, id string, in CommentInput) error {
+	p := fmt.Sprintf("/changes/%s/revisions/%s/drafts/%s", url.PathEscape(change), url.PathEscape(revision), url.PathEscape(id))
+	if err := c.do(ctx, http.MethodPut, p, in, nil); err != nil {
+		return fmt.Errorf("update draft: %w", err)
+	}
+	return nil
+}
+
+// DeleteDraft deletes a draft comment.
+func (c *Client) DeleteDraft(ctx context.Context, change, revision, id string) error {
+	p := fmt.Sprintf("/changes/%s/revisions/%s/drafts/%s", url.PathEscape(change), url.PathEscape(revision), url.PathEscape(id))
+	if err := c.do(ctx, http.MethodDelete, p, nil, nil); err != nil {
+		return fmt.Errorf("delete draft: %w", err)
+	}
+	return nil
+}
+
 func withPaths(comments map[string][]CommentInfo) map[string][]CommentInfo {
 	for path, list := range comments {
 		for i := range list {
@@ -161,10 +202,10 @@ func (c *Client) do(ctx context.Context, method, path string, in, out any) error
 	if err != nil {
 		return fmt.Errorf("read response: %w", err)
 	}
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("%s: %s", resp.Status, strings.TrimSpace(string(respBody)))
 	}
-	if out == nil {
+	if out == nil || resp.StatusCode == http.StatusNoContent {
 		return nil
 	}
 	return json.Unmarshal(bytes.TrimPrefix(respBody, xssiPrefix), out)

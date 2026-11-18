@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
@@ -16,8 +17,9 @@ import (
 )
 
 type selfLoadedMsg struct {
-	self *gerrit.AccountInfo
-	err  error
+	self   *gerrit.AccountInfo
+	drafts int
+	err    error
 }
 
 type reviewPostedMsg struct{ err error }
@@ -25,7 +27,7 @@ type reviewPostedMsg struct{ err error }
 // changeUpdatedMsg asks the change screen to reload after a review was posted.
 type changeUpdatedMsg struct{}
 
-var errEmptyReview = errors.New("nothing to send: change a vote or write a message")
+var errEmptyReview = errors.New("nothing to send: change a vote, write a message or add draft comments")
 
 type reviewLabel struct {
 	name     string
@@ -53,6 +55,7 @@ type reviewScreen struct {
 	sending  bool
 	err      error
 	revision int
+	drafts   int
 }
 
 func newReviewScreen(client *gerrit.Client, change *gerrit.ChangeInfo) *reviewScreen {
@@ -78,12 +81,26 @@ func newReviewScreen(client *gerrit.Client, change *gerrit.ChangeInfo) *reviewSc
 }
 
 func (s *reviewScreen) Init() tea.Cmd {
-	client := s.client
+	client, number := s.client, strconv.Itoa(s.change.Number)
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
-		self, err := client.Self(ctx)
-		return selfLoadedMsg{self: self, err: err}
+
+		var (
+			wg                sync.WaitGroup
+			self              *gerrit.AccountInfo
+			drafts            map[string][]gerrit.CommentInfo
+			selfErr, draftErr error
+		)
+		wg.Go(func() { self, selfErr = client.Self(ctx) })
+		wg.Go(func() { drafts, draftErr = client.ListDrafts(ctx, number) })
+		wg.Wait()
+
+		msg := selfLoadedMsg{self: self, err: errors.Join(selfErr, draftErr)}
+		for _, list := range drafts {
+			msg.drafts += len(list)
+		}
+		return msg
 	}
 }
 
@@ -101,6 +118,7 @@ func (s *reviewScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
 		s.err = msg.err
 		if msg.err == nil {
 			s.setSelf(msg.self)
+			s.drafts = msg.drafts
 		}
 		return s, nil
 
@@ -172,9 +190,10 @@ func (s *reviewScreen) handleKey(msg tea.KeyMsg) (screen, tea.Cmd) {
 	return s, nil
 }
 
-// reviewInput returns the votes that differ from the current ones and the message.
+// reviewInput returns the votes that differ from the current ones and the
+// message, publishing the user's drafts.
 func (s *reviewScreen) reviewInput() (gerrit.ReviewInput, error) {
-	in := gerrit.ReviewInput{Message: strings.TrimSpace(s.message.Value())}
+	in := gerrit.ReviewInput{Message: strings.TrimSpace(s.message.Value()), Drafts: gerrit.PublishAllDrafts}
 	for _, l := range s.labels {
 		if l.selected != l.current {
 			if in.Labels == nil {
@@ -183,7 +202,7 @@ func (s *reviewScreen) reviewInput() (gerrit.ReviewInput, error) {
 			in.Labels[l.name] = l.selected
 		}
 	}
-	if in.Message == "" && len(in.Labels) == 0 {
+	if in.Message == "" && len(in.Labels) == 0 && s.drafts == 0 {
 		return in, errEmptyReview
 	}
 	return in, nil
@@ -243,6 +262,11 @@ func (s *reviewScreen) View() string {
 			line += dimStyle.Render(fmt.Sprintf("  (was %+d)", l.current))
 		}
 		b.WriteString(line + "\n")
+	}
+
+	if s.drafts > 0 {
+		b.WriteString(headingStyle.Render("Drafts") + "\n")
+		b.WriteString(draftStyle.Render(fmt.Sprintf("  %d draft comments will be published", s.drafts)) + "\n")
 	}
 
 	b.WriteString(headingStyle.Render("Message") + "\n")

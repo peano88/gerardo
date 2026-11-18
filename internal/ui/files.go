@@ -18,31 +18,32 @@ import (
 type fileSelectedMsg struct{ index int }
 
 type commentsLoadedMsg struct {
-	comments, ported map[string][]gerrit.CommentInfo
-	err              error
+	comments changeComments
+	err      error
 }
 
-// changeComments holds the published comments of a change and the unresolved
-// threads ported onto its current revision.
+// changeComments holds the published comments of a change, the unresolved
+// threads ported onto its current revision and the user's drafts.
 type changeComments struct {
-	comments, ported map[string][]gerrit.CommentInfo
+	comments, ported, drafts map[string][]gerrit.CommentInfo
 }
 
 func fetchComments(ctx context.Context, client *gerrit.Client, change *gerrit.ChangeInfo) (changeComments, error) {
 	number := strconv.Itoa(change.Number)
 	var (
-		wg           sync.WaitGroup
-		c            changeComments
-		cErr, portEr error
+		wg                      sync.WaitGroup
+		c                       changeComments
+		cErr, portErr, draftErr error
 	)
 	wg.Go(func() { c.comments, cErr = client.ListComments(ctx, number) })
-	wg.Go(func() { c.ported, portEr = client.PortedComments(ctx, number, change.CurrentRevision) })
+	wg.Go(func() { c.ported, portErr = client.PortedComments(ctx, number, change.CurrentRevision) })
+	wg.Go(func() { c.drafts, draftErr = client.ListDrafts(ctx, number) })
 	wg.Wait()
-	return c, errors.Join(cErr, portEr)
+	return c, errors.Join(cErr, portErr, draftErr)
 }
 
 func (c changeComments) threads(path string, revision int) []gerrit.Thread {
-	return gerrit.ThreadsForRevision(path, revision, c.comments, c.ported)
+	return gerrit.ThreadsForRevision(path, revision, c.comments, c.ported, c.drafts)
 }
 
 type filesScreen struct {
@@ -103,7 +104,7 @@ func (s *filesScreen) Init() tea.Cmd {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
 		c, err := fetchComments(ctx, client, change)
-		return commentsLoadedMsg{comments: c.comments, ported: c.ported, err: err}
+		return commentsLoadedMsg{comments: c, err: err}
 	}
 }
 
@@ -111,7 +112,7 @@ func (s *filesScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
 	switch msg := msg.(type) {
 	case commentsLoadedMsg:
 		s.loading, s.err = false, msg.err
-		s.comments = changeComments{comments: msg.comments, ported: msg.ported}
+		s.comments = msg.comments
 		s.table.SetRows(s.rows())
 		return s, nil
 

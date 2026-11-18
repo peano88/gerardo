@@ -108,61 +108,68 @@ func visibleLines(lines []diffLine, context int, hasThreads func(diffLine) bool)
 	return visible
 }
 
-// renderedDiff is a rendered diff and the content line of each thread, in order.
+// rowTarget is what a rendered row refers to: a diff line, the file header
+// (for file-level comments) or a thread, given as an index in the threads.
+type rowTarget struct {
+	line      diffLine
+	hasLine   bool
+	fileLevel bool
+	thread    int
+}
+
+var noTarget = rowTarget{thread: -1}
+
+// renderedDiff is a rendered diff: its rows, what each row refers to, and the
+// row of each thread header, in order.
 type renderedDiff struct {
 	content       string
+	lines         []string
+	targets       []rowTarget
 	threadOffsets []int
 }
 
-type diffWriter struct {
-	b     strings.Builder
-	lines int
-}
-
-func (w *diffWriter) line(s string) {
-	w.b.WriteString(s)
-	w.b.WriteByte('\n')
-	w.lines++
+func (r *renderedDiff) add(s string, t rowTarget) {
+	r.lines = append(r.lines, s)
+	r.targets = append(r.targets, t)
 }
 
 // renderDiff renders a unified diff with its comment threads, keeping context
 // unchanged lines around each change and thread; a negative context renders
 // the whole file.
-func renderDiff(path string, d *gerrit.DiffInfo, context int, threads []gerrit.Thread, width int) renderedDiff {
-	var w diffWriter
-	var offsets []int
-	writeThread := func(t gerrit.Thread) {
-		offsets = append(offsets, w.lines)
-		for _, l := range renderThread(t, width) {
-			w.line(l)
+func renderDiff(path string, d *gerrit.DiffInfo, context int, threads []gerrit.Thread, width int) (r renderedDiff) {
+	writeThread := func(i int) {
+		r.threadOffsets = append(r.threadOffsets, len(r.lines))
+		for _, l := range renderThread(threads[i], width) {
+			r.add(l, rowTarget{thread: i})
 		}
 	}
+	defer func() { r.content = strings.Join(r.lines, "\n") + "\n" }()
 
 	header := path
 	if d.MetaA != nil && d.MetaB != nil && d.MetaA.Name != d.MetaB.Name {
 		header = d.MetaA.Name + " → " + d.MetaB.Name
 	}
-	w.line(titleStyle.Render(header) + " " + dimStyle.Render(strings.ToLower(d.ChangeType)))
-	w.line("")
+	r.add(titleStyle.Render(header)+" "+dimStyle.Render(strings.ToLower(d.ChangeType)), rowTarget{fileLevel: true, thread: -1})
+	r.add("", noTarget)
 
-	byLine := map[threadKey][]gerrit.Thread{}
-	var fileLevel []gerrit.Thread
-	for _, t := range threads {
+	byLine := map[threadKey][]int{}
+	var keys []threadKey
+	for i, t := range threads {
 		root := t.Root()
 		if root.Line == 0 {
-			fileLevel = append(fileLevel, t)
+			writeThread(i)
 			continue
 		}
 		key := threadKey{parent: root.OnParent(), line: root.Line}
-		byLine[key] = append(byLine[key], t)
-	}
-	for _, t := range fileLevel {
-		writeThread(t)
+		if _, ok := byLine[key]; !ok {
+			keys = append(keys, key)
+		}
+		byLine[key] = append(byLine[key], i)
 	}
 
 	if d.Binary {
-		w.line(dimStyle.Render("binary file"))
-		return renderedDiff{content: w.b.String(), threadOffsets: offsets}
+		r.add(dimStyle.Render("binary file"), noTarget)
+		return r
 	}
 
 	lines := flattenDiff(d)
@@ -179,7 +186,7 @@ func renderDiff(path string, d *gerrit.DiffInfo, context int, threads []gerrit.T
 	hidden := 0
 	flush := func() {
 		if hidden > 0 {
-			w.line(dimStyle.Render(fmt.Sprintf("%*s⋯ %d unchanged lines", gutterWidth, "", hidden)))
+			r.add(dimStyle.Render(fmt.Sprintf("%*s⋯ %d unchanged lines", gutterWidth, "", hidden)), noTarget)
 			hidden = 0
 		}
 	}
@@ -193,7 +200,7 @@ func renderDiff(path string, d *gerrit.DiffInfo, context int, threads []gerrit.T
 			continue
 		}
 		flush()
-		w.line(renderDiffLine(l))
+		r.add(renderDiffLine(l), rowTarget{line: l, hasLine: true, thread: -1})
 		for _, k := range l.threadKeys() {
 			for _, t := range byLine[k] {
 				writeThread(t)
@@ -204,12 +211,12 @@ func renderDiff(path string, d *gerrit.DiffInfo, context int, threads []gerrit.T
 	flush()
 
 	// Threads whose line is outside the diff, e.g. stale ports.
-	for _, ts := range byLine {
-		for _, t := range ts {
+	for _, k := range keys {
+		for _, t := range byLine[k] {
 			writeThread(t)
 		}
 	}
-	return renderedDiff{content: w.b.String(), threadOffsets: offsets}
+	return r
 }
 
 func renderDiffLine(l diffLine) string {
@@ -251,8 +258,11 @@ func renderThread(t gerrit.Thread, width int) []string {
 
 	out := []string{indent + barStyle.Render("╭ ") + header}
 	for _, c := range t.Comments {
-		out = append(out, bar+titleStyle.Render(c.Author.DisplayName())+" "+
-			dimStyle.Render(c.Updated.Local().Format("2006-01-02 15:04")))
+		author := bar + titleStyle.Render(c.Author.DisplayName()) + " " + dimStyle.Render(c.Updated.Local().Format("2006-01-02 15:04"))
+		if c.Draft {
+			author = bar + draftStyle.Render("DRAFT") + " " + dimStyle.Render("not published yet")
+		}
+		out = append(out, author)
 		for l := range strings.SplitSeq(wrap.Render(strings.TrimSpace(c.Message)), "\n") {
 			out = append(out, bar+"  "+l)
 		}
