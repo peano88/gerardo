@@ -25,7 +25,7 @@ func TestRenderDiffLineNumbers(t *testing.T) {
 			{AB: []string{"}"}},
 		},
 	}
-	got := strings.Split(ansi.ReplaceAllString(renderDiff("main.go", d, 3), ""), "\n")
+	got := strings.Split(ansi.ReplaceAllString(renderDiff("main.go", d, 3, nil, 80).content, ""), "\n")
 	want := []string{
 		"main.go modified",
 		"",
@@ -60,7 +60,7 @@ func TestRenderDiffCollapsesUnchangedLines(t *testing.T) {
 			{AB: numbered(21, 30)},
 		},
 	}
-	got := strings.Split(ansi.ReplaceAllString(renderDiff("f", d, 2), ""), "\n")
+	got := strings.Split(ansi.ReplaceAllString(renderDiff("f", d, 2, nil, 80).content, ""), "\n")
 	want := []string{
 		"f modified",
 		"",
@@ -83,9 +83,64 @@ func TestRenderDiffCollapsesUnchangedLines(t *testing.T) {
 		t.Fatalf("got:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
 	}
 
-	full := ansi.ReplaceAllString(renderDiff("f", d, -1), "")
+	full := ansi.ReplaceAllString(renderDiff("f", d, -1, nil, 80).content, "")
 	if strings.Contains(full, "unchanged") || !strings.Contains(full, "   31    31   l30") {
 		t.Fatalf("full context should render every line:\n%s", full)
+	}
+}
+
+func TestRenderDiffWithThreads(t *testing.T) {
+	var common []string
+	for i := 1; i <= 20; i++ {
+		common = append(common, "l"+strconv.Itoa(i))
+	}
+	d := &gerrit.DiffInfo{
+		ChangeType: "MODIFIED",
+		Content: []gerrit.DiffContent{
+			{AB: common},
+			{A: []string{"old"}, B: []string{"new"}},
+		},
+	}
+	threads := []gerrit.Thread{
+		{Comments: []gerrit.CommentInfo{{ID: "f", Message: "file level", Author: &gerrit.AccountInfo{Name: "Ann"}}}},
+		{Comments: []gerrit.CommentInfo{{ID: "c", Line: 5, Message: "why l5?", Unresolved: true, Author: &gerrit.AccountInfo{Name: "Bob"}}}},
+		{Comments: []gerrit.CommentInfo{{ID: "p", Line: 21, Side: gerrit.SideParent, Message: "keep old", Author: &gerrit.AccountInfo{Name: "Cy"}}}},
+	}
+
+	r := renderDiff("f", d, 1, threads, 80)
+	lines := strings.Split(ansi.ReplaceAllString(r.content, ""), "\n")
+	find := func(substr string) int {
+		t.Helper()
+		for i, l := range lines {
+			if strings.Contains(l, substr) {
+				return i
+			}
+		}
+		t.Fatalf("%q not found in:\n%s", substr, strings.Join(lines, "\n"))
+		return -1
+	}
+
+	l5 := find("    5     5   l5")
+	const threadHeight = 4
+	switch {
+	case find("why l5?") <= l5:
+		t.Fatal("thread should be rendered below its line")
+	case find("    4     4   l4") != l5-1 || find("    6     6   l6") != l5+1+threadHeight:
+		t.Fatalf("commented line should keep its context visible:\n%s", strings.Join(lines, "\n"))
+	case find("keep old") <= find("- old") || find("keep old") >= find("+ new"):
+		t.Fatal("parent-side thread should be rendered below the deleted line")
+	case find("file level") >= l5:
+		t.Fatal("file-level thread should be rendered before the diff")
+	}
+
+	want := []int{find("file comment"), find("╭ unresolved"), find("- old") + 1}
+	if len(r.threadOffsets) != len(want) {
+		t.Fatalf("got offsets %v, want %v", r.threadOffsets, want)
+	}
+	for i := range want {
+		if r.threadOffsets[i] != want[i] {
+			t.Fatalf("got offsets %v, want %v", r.threadOffsets, want)
+		}
 	}
 }
 

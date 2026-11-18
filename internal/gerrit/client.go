@@ -80,6 +80,35 @@ func (c *Client) GetDiff(ctx context.Context, change, revision, path string) (*D
 	return &diff, nil
 }
 
+// ListComments fetches the published inline comments of all revisions, by file path.
+func (c *Client) ListComments(ctx context.Context, change string) (map[string][]CommentInfo, error) {
+	var comments map[string][]CommentInfo
+	if err := c.get(ctx, fmt.Sprintf("/changes/%s/comments", url.PathEscape(change)), &comments); err != nil {
+		return nil, fmt.Errorf("list comments: %w", err)
+	}
+	return withPaths(comments), nil
+}
+
+// PortedComments fetches the unresolved threads of earlier patch sets, with
+// their lines mapped onto revision.
+func (c *Client) PortedComments(ctx context.Context, change, revision string) (map[string][]CommentInfo, error) {
+	var comments map[string][]CommentInfo
+	p := fmt.Sprintf("/changes/%s/revisions/%s/ported_comments", url.PathEscape(change), url.PathEscape(revision))
+	if err := c.get(ctx, p, &comments); err != nil {
+		return nil, fmt.Errorf("list ported comments: %w", err)
+	}
+	return withPaths(comments), nil
+}
+
+func withPaths(comments map[string][]CommentInfo) map[string][]CommentInfo {
+	for path, list := range comments {
+		for i := range list {
+			list[i].Path = path
+		}
+	}
+	return comments
+}
+
 // Self fetches the account of the authenticated user.
 func (c *Client) Self(ctx context.Context) (*AccountInfo, error) {
 	var account AccountInfo
