@@ -125,10 +125,28 @@ type changeView struct {
 	comments map[string][]gerrit.CommentInfo
 	// commentsByID finds the comments replies answer.
 	commentsByID map[string]gerrit.CommentInfo
+	// draftReplies maps comment IDs to the user's drafts answering them.
+	draftReplies map[string][]gerrit.CommentInfo
+	// selected is the ID of the highlighted comment.
+	selected string
+}
+
+// commentPos is the line a comment starts on in a rendered change.
+type commentPos struct {
+	id   string
+	line int
 }
 
 func renderChange(c *gerrit.ChangeInfo, width int, view changeView) string {
+	s, _ := renderChangeLayout(c, width, view)
+	return s
+}
+
+// renderChangeLayout renders a change, also returning where its shown
+// comments are, in order.
+func renderChangeLayout(c *gerrit.ChangeInfo, width int, view changeView) (string, []commentPos) {
 	var b strings.Builder
+	var positions []commentPos
 
 	b.WriteString(changeBadges(c) + "\n")
 	b.WriteString(numberStyle.Bold(true).Render(strconv.Itoa(c.Number)+":") + " " + titleStyle.Render(c.Subject) + "\n")
@@ -226,12 +244,13 @@ func renderChange(c *gerrit.ChangeInfo, width int, view changeView) string {
 				b.WriteString(wrap.Render(body) + "\n")
 			}
 			for _, cm := range comments {
-				b.WriteString(renderMessageComment(cm, view.commentsByID, width))
+				positions = append(positions, commentPos{id: cm.ID, line: strings.Count(b.String(), "\n")})
+				b.WriteString(renderMessageComment(cm, view, width))
 			}
 		}
 	}
 
-	return b.String()
+	return b.String(), positions
 }
 
 // commentCount matches the "(N comments)" line Gerrit adds to a message.
@@ -242,7 +261,7 @@ var commentBar = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), false, fals
 
 // renderMessageComment shows an inline comment under its message: where it
 // is, then its text.
-func renderMessageComment(c gerrit.CommentInfo, byID map[string]gerrit.CommentInfo, width int) string {
+func renderMessageComment(c gerrit.CommentInfo, view changeView, width int) string {
 	var where string
 	switch c.Path {
 	case gerrit.PatchSetLevel:
@@ -256,17 +275,25 @@ func renderMessageComment(c gerrit.CommentInfo, byID map[string]gerrit.CommentIn
 		where += ":" + strconv.Itoa(c.Line)
 	}
 	location := numberStyle.Render(where)
+	bar := commentBar
+	if c.ID != "" && c.ID == view.selected {
+		location = hintKeyStyle.Render("▶ " + where)
+		bar = bar.BorderForeground(accent)
+	}
 	if c.Unresolved {
 		location += " " + unresolvedSt.Render("● unresolved")
 	}
 	textWidth := max(width-8, 20)
 	text := strings.TrimSpace(c.Message)
-	if parent, ok := byID[c.InReplyTo]; ok {
+	if parent, ok := view.commentsByID[c.InReplyTo]; ok {
 		first, _, _ := strings.Cut(strings.TrimSpace(parent.Message), "\n")
 		quote := ansi.Truncate("↳ "+parent.Author.DisplayName()+": "+first, textWidth-2, "…")
 		text = dimStyle.Italic(true).Render(quote) + "\n" + text
 	}
-	text = commentBar.Width(textWidth).Render(text)
+	for _, d := range view.draftReplies[c.ID] {
+		text += "\n" + draftStyle.Render("✎ your draft: ") + strings.TrimSpace(d.Message)
+	}
+	text = bar.Width(textWidth).Render(text)
 	return lipgloss.NewStyle().PaddingLeft(6).Render(location+"\n"+text) + "\n"
 }
 

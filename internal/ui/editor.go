@@ -1,9 +1,11 @@
 package ui
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -19,6 +21,22 @@ type draftRequest struct {
 	revision string
 	draftID  string
 	input    gerrit.CommentInput
+}
+
+// saveDraft creates or updates the draft of req on change.
+func saveDraft(client *gerrit.Client, change int, req draftRequest, notice string) tea.Cmd {
+	number := strconv.Itoa(change)
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		defer cancel()
+		var err error
+		if req.draftID == "" {
+			err = client.CreateDraft(ctx, number, req.revision, req.input)
+		} else {
+			err = client.UpdateDraft(ctx, number, req.revision, req.draftID, req.input)
+		}
+		return draftSavedMsg{notice: notice, err: err}
+	}
 }
 
 type editorClosedMsg struct {

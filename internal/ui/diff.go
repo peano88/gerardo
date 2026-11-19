@@ -57,6 +57,8 @@ type diffScreen struct {
 	loading     bool
 	err         error
 	notice      string
+	// focusThread is the root of the thread to put the cursor on once loaded.
+	focusThread string
 
 	searching    bool
 	searchInput  textinput.Model
@@ -130,6 +132,14 @@ func (s *diffScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
 				s.cursor = 0
 				s.viewport.GotoTop()
 				s.viewport.SetXOffset(0)
+			}
+			if s.focusThread != "" {
+				if row, ok := s.threadRow(s.focusThread); ok {
+					s.cursor = row
+				} else {
+					s.notice = "the thread is not shown on the current patch set"
+				}
+				s.focusThread = ""
 			}
 			s.refresh()
 		}
@@ -440,6 +450,16 @@ func (s *diffScreen) findAnchor(an anchor) int {
 	return min(s.cursor, max(len(s.rendered.lines)-1, 0))
 }
 
+// threadRow returns the row of the thread started by rootID.
+func (s *diffScreen) threadRow(rootID string) (int, bool) {
+	for i, t := range s.rendered.targets {
+		if t.thread >= 0 && s.threads[t.thread].Root().ID == rootID {
+			return i, true
+		}
+	}
+	return 0, false
+}
+
 func (s *diffScreen) move(delta int) {
 	s.setCursor(s.cursor + delta)
 }
@@ -668,18 +688,7 @@ func (s *diffScreen) deleteDraft() tea.Cmd {
 
 func (s *diffScreen) saveDraft(req draftRequest, notice string) tea.Cmd {
 	s.loading = true
-	client, number := s.client, strconv.Itoa(s.change.Number)
-	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-		defer cancel()
-		var err error
-		if req.draftID == "" {
-			err = client.CreateDraft(ctx, number, req.revision, req.input)
-		} else {
-			err = client.UpdateDraft(ctx, number, req.revision, req.draftID, req.input)
-		}
-		return draftSavedMsg{notice: notice, err: err}
-	}
+	return saveDraft(s.client, s.change.Number, req, notice)
 }
 
 func threadContext(t gerrit.Thread) []string {
@@ -724,8 +733,8 @@ func (s *diffScreen) Status() string {
 	if s.searching {
 		return s.searchInput.View()
 	}
-	help := fmt.Sprintf("[%d/%d] %s · %d threads (%d open, %d drafts) · ? help",
-		s.index+1, len(s.paths), s.path(), len(s.threads), unresolved, drafts)
+	help := dimStyle.Render(fmt.Sprintf("[%d/%d] %d threads (%d open, %d drafts)", s.index+1, len(s.paths), len(s.threads), unresolved, drafts)) + "   " +
+		keyHints("]/[", "thread", "c", "comment", "r", "reply", "A/D", "ack/done", "v", "publish", "?", "help")
 	if s.query != "" {
 		help = fmt.Sprintf("/%s: %d matches · %s", s.query, len(s.rendered.matchRows), help)
 	}
