@@ -148,8 +148,8 @@ func TestGetChange(t *testing.T) {
 		t.Fatalf("unexpected updated: %v", change.Updated)
 	case !ok || rev.Number != 3 || rev.Files["main.go"].LinesInserted != 5:
 		t.Fatalf("unexpected revision: %+v", rev)
-	case change.Labels["Code-Review"].Summary() != "+2":
-		t.Fatalf("unexpected label summary: %q", change.Labels["Code-Review"].Summary())
+	case change.Labels["Code-Review"].Approved == nil:
+		t.Fatalf("Code-Review should be approved: %+v", change.Labels["Code-Review"])
 	}
 
 	if _, err := NewClient(srv.URL, "alice", "wrong").GetChange(context.Background(), "42"); err == nil {

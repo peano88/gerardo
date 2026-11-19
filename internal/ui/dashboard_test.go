@@ -96,8 +96,8 @@ func TestDashboardGroupsOwnChangesFirst(t *testing.T) {
 		t.Fatalf("moving up should skip the Reviews header, got %d", n)
 	}
 	d.Update(up)
-	if n, _ := d.selected(); n != 2 || d.table.Cursor() != 1 {
-		t.Fatalf("moving up onto the top header should bounce back, got %d at row %d", n, d.table.Cursor())
+	if n, _ := d.selected(); n != 2 || d.cursor != 1 {
+		t.Fatalf("moving up onto the top header should bounce back, got %d at row %d", n, d.cursor)
 	}
 	if !strings.Contains(d.View(), "My changes (1)") {
 		t.Fatalf("headers should be rendered:\n%s", d.View())
@@ -136,5 +136,33 @@ func TestDashboardCopyNumber(t *testing.T) {
 	d.Update(tea.KeyMsg{Type: tea.KeyDown})
 	if strings.Contains(d.Status(), "copied") {
 		t.Fatal("the next key press should clear the notice")
+	}
+}
+
+func TestDashboardKeepsSelectionOnReload(t *testing.T) {
+	d := loadedDashboard(t, 80)
+	d.Update(keyRunes("G"))
+	if n, _ := d.selected(); n != 2 {
+		t.Fatalf("G should select the last change, got %d", n)
+	}
+	d.Update(changesLoadedMsg{changes: []gerrit.ChangeInfo{
+		{Number: 3, Subject: "new"},
+		{Number: 2, Subject: "second"},
+	}})
+	if n, _ := d.selected(); n != 2 {
+		t.Fatalf("reloading should keep the selected change, got %d", n)
+	}
+	d.Update(keyRunes("g"))
+	if n, _ := d.selected(); n != 3 {
+		t.Fatalf("g should select the first change, got %d", n)
+	}
+}
+
+func TestDashboardEmpty(t *testing.T) {
+	d := newDashboard(nil, "is:open")
+	d.SetSize(80, 10)
+	d.Update(changesLoadedMsg{})
+	if !strings.Contains(d.View(), "No changes match is:open") {
+		t.Fatalf("empty dashboard should say so:\n%s", d.View())
 	}
 }

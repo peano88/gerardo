@@ -102,22 +102,6 @@ type ReviewInput struct {
 // PublishAllDrafts publishes the user's drafts of every revision with a review.
 const PublishAllDrafts = "PUBLISH_ALL_REVISIONS"
 
-// Summary returns the decisive vote of the label, such as "+2" or "-1".
-func (l LabelInfo) Summary() string {
-	switch {
-	case l.Rejected != nil:
-		return "-2"
-	case l.Approved != nil:
-		return "+2"
-	case l.Disliked != nil:
-		return "-1"
-	case l.Recommended != nil:
-		return "+1"
-	default:
-		return ""
-	}
-}
-
 // CommitInfo describes the commit of a revision.
 type CommitInfo struct {
 	Subject string `json:"subject"`

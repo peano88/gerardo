@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -80,9 +79,10 @@ type previewLoadedMsg struct {
 type dashboard struct {
 	client  *gerrit.Client
 	query   string
-	table   table.Model
 	changes []gerrit.ChangeInfo
 	items   []dashItem
+	cursor  int
+	offset  int
 	self    *gerrit.AccountInfo
 	loading bool
 	err     error
@@ -102,7 +102,6 @@ func newDashboard(client *gerrit.Client, query string) *dashboard {
 	return &dashboard{
 		client:      client,
 		query:       query,
-		table:       table.New(table.WithFocused(true), table.WithColumns(dashboardColumns(0, false))),
 		showPreview: true,
 		preview:     viewport.New(0, 0),
 		previews:    map[int]*gerrit.ChangeInfo{},
@@ -146,10 +145,10 @@ func (d *dashboard) Update(msg tea.Msg) (screen, tea.Cmd) {
 			if d.self != nil {
 				selfID = d.self.AccountID
 			}
+			prev, _ := d.selected()
 			d.changes = msg.changes
 			d.items = groupChanges(d.changes, selfID)
-			d.table.SetRows(d.rows())
-			d.skipHeader(1)
+			d.selectNumber(prev)
 			d.previewFor = 0
 		}
 		return d, d.schedulePreview()
@@ -195,6 +194,22 @@ func (d *dashboard) Update(msg tea.Msg) (screen, tea.Cmd) {
 				return d, copyNumber(n)
 			}
 			return d, nil
+		case "up", "k":
+			return d, d.moveBy(-1)
+		case "down", "j":
+			return d, d.moveBy(1)
+		case "pgup", "ctrl+b":
+			return d, d.moveBy(-d.listHeight())
+		case "pgdown", "ctrl+f":
+			return d, d.moveBy(d.listHeight())
+		case "ctrl+u":
+			return d, d.moveBy(-d.listHeight() / 2)
+		case "ctrl+d":
+			return d, d.moveBy(d.listHeight() / 2)
+		case "home", "g":
+			return d, d.moveBy(-len(d.items))
+		case "end", "G":
+			return d, d.moveBy(len(d.items))
 		case "J":
 			d.preview.ScrollDown(3)
 			return d, nil
@@ -213,47 +228,22 @@ func (d *dashboard) Update(msg tea.Msg) (screen, tea.Cmd) {
 		}
 	}
 
-	before := d.table.Cursor()
-	var cmd tea.Cmd
-	d.table, cmd = d.table.Update(msg)
-	if after := d.table.Cursor(); after != before {
-		direction := 1
-		if after < before {
-			direction = -1
-		}
-		d.skipHeader(direction)
-		return d, tea.Batch(cmd, d.schedulePreview())
-	}
 	if d.previewFor == 0 {
-		return d, tea.Batch(cmd, d.schedulePreview())
+		return d, d.schedulePreview()
 	}
-	return d, cmd
+	return d, nil
 }
 
-// skipHeader moves the cursor off a section header, in direction when
-// possible, otherwise the other way.
-func (d *dashboard) skipHeader(direction int) {
-	isHeader := func(i int) bool { return i >= 0 && i < len(d.items) && d.items[i].change == nil }
-	c := d.table.Cursor()
-	if !isHeader(c) {
-		return
-	}
-	for _, dir := range []int{direction, -direction} {
-		for i := c + dir; i >= 0 && i < len(d.items); i += dir {
-			if !isHeader(i) {
-				d.table.SetCursor(i)
-				return
-			}
-		}
-	}
+func (d *dashboard) moveBy(delta int) tea.Cmd {
+	d.move(delta)
+	return d.schedulePreview()
 }
 
 func (d *dashboard) selected() (int, bool) {
-	c := d.table.Cursor()
-	if c < 0 || c >= len(d.items) || d.items[c].change == nil {
+	if d.cursor < 0 || d.cursor >= len(d.items) || d.items[d.cursor].change == nil {
 		return 0, false
 	}
-	return d.items[c].change.Number, true
+	return d.items[d.cursor].change.Number, true
 }
 
 func (d *dashboard) split() bool {
@@ -291,9 +281,9 @@ func (d *dashboard) renderPreview() {
 
 func (d *dashboard) View() string {
 	if !d.split() {
-		return d.table.View()
+		return d.listView(d.width)
 	}
-	return lipgloss.JoinHorizontal(lipgloss.Top, d.table.View(), previewBorder.Height(d.height).Render(d.preview.View()))
+	return lipgloss.JoinHorizontal(lipgloss.Top, d.listView(d.listWidth()), previewBorder.Height(d.height).Render(d.preview.View()))
 }
 
 func (d *dashboard) Status() string {
@@ -309,55 +299,19 @@ func (d *dashboard) SetSize(width, height int) {
 	d.layout()
 }
 
-func (d *dashboard) layout() {
-	tableWidth := d.width
+func (d *dashboard) listWidth() int {
 	if d.split() {
-		tableWidth = d.width * 45 / 100
-		d.preview.Width, d.preview.Height = d.width-tableWidth-2, d.height
+		return d.width * 45 / 100
+	}
+	return d.width
+}
+
+func (d *dashboard) layout() {
+	if d.split() {
+		d.preview.Width, d.preview.Height = d.width-d.listWidth()-2, d.height
 		if d.previewFor != 0 {
 			d.renderPreview()
 		}
 	}
-	d.table.SetColumns(dashboardColumns(tableWidth, d.split()))
-	d.table.SetHeight(d.height)
-}
-
-func dashboardColumns(width int, compact bool) []table.Column {
-	const number, vote, updated, padding = 7, 4, 5, 2 * 6
-	owner := 30
-	if compact {
-		owner = 16
-	}
-	return []table.Column{
-		{Title: "#", Width: number},
-		{Title: "Subject", Width: max(width-number-owner-2*vote-updated-padding, 20)},
-		{Title: "Owner", Width: owner},
-		{Title: "CR", Width: vote},
-		{Title: "V", Width: vote},
-		{Title: "Upd", Width: updated},
-	}
-}
-
-func (d *dashboard) rows() []table.Row {
-	rows := make([]table.Row, 0, len(d.items))
-	for _, item := range d.items {
-		c := item.change
-		if c == nil {
-			rows = append(rows, table.Row{"", item.header, "", "", "", ""})
-			continue
-		}
-		subject := c.Subject
-		if c.WorkInProgress {
-			subject = "[WIP] " + subject
-		}
-		rows = append(rows, table.Row{
-			strconv.Itoa(c.Number),
-			subject,
-			c.Owner.DisplayName(),
-			c.Labels["Code-Review"].Summary(),
-			c.Labels["Verified"].Summary(),
-			relativeTime(c.Updated.Time),
-		})
-	}
-	return rows
+	d.scroll()
 }
