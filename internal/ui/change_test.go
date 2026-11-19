@@ -150,28 +150,28 @@ func TestChangeSubmitAsksFirst(t *testing.T) {
 	s := loadedChangeScreen(t, gerrit.NewClient(srv.URL, "u", "p"))
 	s.change.Status = "NEW"
 	s.Update(keyRunes("S"))
-	if s.confirm != nil || !strings.Contains(s.Status(), "not submittable") {
+	if s.dialog != nil || !strings.Contains(s.Status(), "not submittable") {
 		t.Fatal("a change that is not submittable should not offer to submit")
 	}
 
 	s.change.Submittable = true
 	s.Update(keyRunes("S"))
-	if s.confirm == nil || !strings.Contains(ansiRe.ReplaceAllString(s.View(), ""), "Submit change 42?") {
+	if s.dialog == nil || !strings.Contains(ansiRe.ReplaceAllString(s.View(), ""), "Submit change 42?") {
 		t.Fatalf("S should ask for confirmation:\n%s", s.View())
 	}
 	for _, k := range []tea.KeyMsg{keyRunes("j"), keyRunes("S"), {Type: tea.KeyEnter}} {
-		if _, cmd := s.Update(k); cmd != nil || s.confirm == nil {
+		if _, cmd := s.Update(k); cmd != nil || s.dialog == nil {
 			t.Fatalf("%q should neither submit nor close the dialog", k.String())
 		}
 	}
 	s.Update(keyRunes("n"))
-	if s.confirm != nil || len(calls) != 0 {
+	if s.dialog != nil || len(calls) != 0 {
 		t.Fatal("n should cancel without submitting")
 	}
 
 	s.Update(keyRunes("S"))
 	_, cmd := s.Update(keyRunes("y"))
-	if s.confirm != nil || cmd == nil {
+	if s.dialog != nil || cmd == nil {
 		t.Fatal("y should close the dialog and submit")
 	}
 	if msg := cmd().(changeActionMsg); msg.err != nil || msg.notice != "submitted" {
@@ -182,20 +182,57 @@ func TestChangeSubmitAsksFirst(t *testing.T) {
 	}
 }
 
-func TestChangeRebaseOnlyOpenChanges(t *testing.T) {
-	s := loadedChangeScreen(t, nil)
+func TestChangeRebaseChoices(t *testing.T) {
+	var bodies []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		bodies = append(bodies, r.URL.Path+" "+string(b))
+		_, _ = w.Write([]byte(")]}'\n{}"))
+	}))
+	defer srv.Close()
+
+	s := loadedChangeScreen(t, gerrit.NewClient(srv.URL, "u", "p"))
 	s.change.Status = "MERGED"
-	s.Update(keyRunes("R"))
-	if s.confirm != nil {
+	if _, cmd := s.Update(keyRunes("R")); cmd != nil || s.dialog != nil {
 		t.Fatal("a merged change should not be rebased")
 	}
-	s.change.Status = "NEW"
-	s.Update(keyRunes("R"))
-	if s.confirm == nil || !strings.Contains(strings.Join(s.confirm.details, " "), "uploading patch set 4") {
-		t.Fatalf("R should ask before rebasing, got %+v", s.confirm)
+	s.change.Status, s.change.Branch = "NEW", "main"
+	s.change.Revisions["abc"] = gerrit.RevisionInfo{Number: 3, Commit: &gerrit.CommitInfo{Parents: []gerrit.CommitInfo{{Commit: "p1"}}}}
+	if _, cmd := s.Update(keyRunes("R")); cmd == nil {
+		t.Fatal("R should load the relation chain")
 	}
-	if _, cmd := s.Update(tea.KeyMsg{Type: tea.KeyEsc}); cmd != nil || s.confirm != nil {
-		t.Fatal("esc should cancel the rebase")
+	s.Update(relatedLoadedMsg{related: []gerrit.RelatedChangeInfo{
+		{Number: 41, Status: "NEW", RevisionNumber: 1, CurrentRevisionNumber: 2, Commit: gerrit.CommitInfo{Commit: "p1"}},
+	}})
+	view := ansiRe.ReplaceAllString(s.View(), "")
+	for _, want := range []string{"Rebase change 42?", "▶ 1 Onto parent change 41", "onto its latest patch set 2; now based on patch set 1", "2 Onto the tip of main", "drops the dependency on change 41", "3 Onto another change or commit"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("missing %q in:\n%s", want, view)
+		}
+	}
+
+	// Picking the tip of the branch needs y; enter does nothing.
+	s.Update(keyRunes("2"))
+	if _, cmd := s.Update(tea.KeyMsg{Type: tea.KeyEnter}); cmd != nil || s.dialog == nil {
+		t.Fatal("enter should not confirm a rebase")
+	}
+	_, cmd := s.Update(keyRunes("y"))
+	if msg := cmd().(changeActionMsg); msg.err != nil || msg.notice != "rebased onto main" {
+		t.Fatalf("unexpected result: %+v", msg)
+	}
+
+	// Another change is typed, y included, and confirmed with enter.
+	s.Update(keyRunes("R"))
+	s.Update(relatedLoadedMsg{})
+	s.Update(keyRunes("2"))
+	typeText(s, "y1234")
+	if _, cmd = s.Update(tea.KeyMsg{Type: tea.KeyEnter}); cmd == nil {
+		t.Fatal("enter should rebase onto the typed base")
+	}
+	cmd()
+	want := []string{`/a/changes/42/rebase {"base":""}`, `/a/changes/42/rebase {"base":"y1234"}`}
+	if strings.Join(bodies, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("got requests:\n%s", strings.Join(bodies, "\n"))
 	}
 }
 

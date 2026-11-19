@@ -44,8 +44,13 @@ type changeScreen struct {
 	selected  string
 	positions []commentPos
 
-	// confirm is the open confirmation dialog, if any.
-	confirm *confirmation
+	// dialog is the open confirmation dialog, if any.
+	dialog dialog
+}
+
+type relatedLoadedMsg struct {
+	related []gerrit.RelatedChangeInfo
+	err     error
 }
 
 type changeActionMsg struct {
@@ -79,10 +84,10 @@ func (s *changeScreen) Init() tea.Cmd {
 }
 
 func (s *changeScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
-	if key, ok := msg.(tea.KeyMsg); ok && s.confirm != nil {
-		done, cmd := s.confirm.update(key)
+	if key, ok := msg.(tea.KeyMsg); ok && s.dialog != nil {
+		done, cmd := s.dialog.update(key)
 		if done {
-			s.confirm = nil
+			s.dialog = nil
 			if cmd != nil {
 				s.loading = true
 			}
@@ -91,6 +96,14 @@ func (s *changeScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
 	}
 	s.notice.update(msg)
 	switch msg := msg.(type) {
+	case relatedLoadedMsg:
+		s.loading = false
+		if msg.err != nil {
+			s.notice = notice{err: msg.err}
+			return s, nil
+		}
+		return s, s.openRebase(msg.related)
+
 	case changeActionMsg:
 		s.loading = false
 		s.notice = notice{text: msg.notice, err: msg.err}
@@ -166,8 +179,7 @@ func (s *changeScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
 			s.askSubmit()
 			return s, nil
 		case "R":
-			s.askRebase()
-			return s, nil
+			return s, s.askRebase()
 		case "A":
 			return s, s.quickReply("Ack")
 		case "D":
@@ -363,7 +375,7 @@ func (s *changeScreen) askSubmit() {
 	case !c.Submittable:
 		s.notice = notice{text: "the change is not submittable yet: check its votes and requirements"}
 	default:
-		s.confirm = &confirmation{
+		s.dialog = &confirmation{
 			title:   fmt.Sprintf("Submit change %d?", c.Number),
 			details: []string{c.Subject, dimStyle.Render(c.Project + " · " + c.Branch), "", "This merges the change into " + c.Branch + "."},
 			verb:    "submit",
@@ -372,21 +384,70 @@ func (s *changeScreen) askSubmit() {
 	}
 }
 
-func (s *changeScreen) askRebase() {
+// askRebase loads the relation chain of the change, to offer rebasing onto
+// its parent change.
+func (s *changeScreen) askRebase() tea.Cmd {
 	c := s.change
 	switch {
 	case c == nil:
+		return nil
 	case c.Status != "NEW":
 		s.notice = notice{text: "only open changes can be rebased"}
-	default:
-		rev, _ := c.Current()
-		s.confirm = &confirmation{
-			title:   fmt.Sprintf("Rebase change %d?", c.Number),
-			details: []string{c.Subject, dimStyle.Render(c.Project + " · " + c.Branch), "", fmt.Sprintf("This rebases patch set %d onto the tip of %s, uploading patch set %d.", rev.Number, c.Branch, rev.Number+1)},
-			verb:    "rebase",
-			run:     s.action("rebased", func(ctx context.Context, n string) error { return s.client.Rebase(ctx, n) }),
-		}
+		return nil
 	}
+	s.loading = true
+	client, number := s.client, strconv.Itoa(s.number)
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		defer cancel()
+		related, err := client.RelatedChanges(ctx, number)
+		return relatedLoadedMsg{related: related, err: err}
+	}
+}
+
+// openRebase asks where to rebase: onto the parent change when there is an
+// open one, onto the tip of the branch, or onto a given change or commit.
+func (s *changeScreen) openRebase(related []gerrit.RelatedChangeInfo) tea.Cmd {
+	c := s.change
+	rev, _ := c.Current()
+	rebase := func(base, notice string) tea.Cmd {
+		return s.action(notice, func(ctx context.Context, n string) error { return s.client.Rebase(ctx, n, base) })
+	}
+
+	var choices []choice
+	selected := 0
+	tip := choice{
+		label: "Onto the tip of " + c.Branch,
+		run:   func(string) tea.Cmd { return rebase("", "rebased onto "+c.Branch) },
+	}
+	if parent, ok := gerrit.ParentChange(c, related); ok {
+		p := choice{
+			label: fmt.Sprintf("Onto parent change %d", parent.Number),
+			run: func(string) tea.Cmd {
+				return rebase(strconv.Itoa(parent.Number), fmt.Sprintf("rebased onto change %d", parent.Number))
+			},
+		}
+		if parent.RevisionNumber < parent.CurrentRevisionNumber {
+			p.detail = fmt.Sprintf("onto its latest patch set %d; now based on patch set %d", parent.CurrentRevisionNumber, parent.RevisionNumber)
+		} else {
+			p.detail = fmt.Sprintf("already based on its latest patch set %d", parent.CurrentRevisionNumber)
+			selected = 1
+		}
+		tip.detail = fmt.Sprintf("drops the dependency on change %d", parent.Number)
+		choices = append(choices, p)
+	}
+	choices = append(choices, tip, choice{
+		label:       "Onto another change or commit",
+		placeholder: "change number, 12345/2 or commit SHA-1",
+		run:         func(base string) tea.Cmd { return rebase(base, "rebased onto "+base) },
+	})
+
+	s.dialog = newChoiceDialog(
+		fmt.Sprintf("Rebase change %d?", c.Number),
+		[]string{c.Subject, dimStyle.Render(c.Project + " · " + c.Branch),
+			"", fmt.Sprintf("This uploads patch set %d with patch set %d rebased.", rev.Number+1, rev.Number)},
+		"rebase", choices, selected)
+	return nil
 }
 
 // action runs a change operation, reporting it with notice once done.
@@ -400,8 +461,8 @@ func (s *changeScreen) action(notice string, do func(ctx context.Context, number
 }
 
 func (s *changeScreen) View() string {
-	if s.confirm != nil {
-		return overlay(s.viewport.View(), s.confirm.view(s.viewport.Width), s.viewport.Width, s.viewport.Height)
+	if s.dialog != nil {
+		return overlay(s.viewport.View(), s.dialog.view(s.viewport.Width), s.viewport.Width, s.viewport.Height)
 	}
 	return s.viewport.View()
 }
@@ -411,8 +472,8 @@ func (s *changeScreen) Title() string {
 }
 
 func (s *changeScreen) Status() string {
-	if s.confirm != nil {
-		return keyHints("y", s.confirm.verb, "n/esc", "cancel")
+	if s.dialog != nil {
+		return s.dialog.hints()
 	}
 	var hints string
 	if t, ok := s.threads[s.selected]; ok {

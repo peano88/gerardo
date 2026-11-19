@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -215,11 +216,49 @@ func TestSubmitAndRebase(t *testing.T) {
 	if err := c.Submit(context.Background(), "42"); err != nil {
 		t.Fatal(err)
 	}
-	err := c.Rebase(context.Background(), "42")
+	err := c.Rebase(context.Background(), "42", "")
 	if err == nil || !strings.Contains(err.Error(), "already up to date") {
 		t.Fatalf("rebase should report the server's reason, got %v", err)
 	}
 	if strings.Join(calls, ", ") != "POST /a/changes/42/submit, POST /a/changes/42/rebase" {
 		t.Fatalf("unexpected calls: %v", calls)
+	}
+}
+
+func TestRebaseSendsBase(t *testing.T) {
+	var body string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		body = string(b)
+		_, _ = w.Write([]byte(")]}'\n{}"))
+	}))
+	defer srv.Close()
+
+	c := NewClient(srv.URL, "u", "p")
+	for base, want := range map[string]string{"": `{"base":""}`, "12340": `{"base":"12340"}`} {
+		if err := c.Rebase(context.Background(), "42", base); err != nil {
+			t.Fatal(err)
+		}
+		if body != want {
+			t.Errorf("base %q: sent %s, want %s", base, body, want)
+		}
+	}
+}
+
+func TestParentChange(t *testing.T) {
+	change := &ChangeInfo{Number: 42, CurrentRevision: "c42", Revisions: map[string]RevisionInfo{
+		"c42": {Number: 2, Commit: &CommitInfo{Parents: []CommitInfo{{Commit: "c41"}}}},
+	}}
+	related := []RelatedChangeInfo{
+		{Number: 43, Status: "NEW", Commit: CommitInfo{Commit: "c43"}},
+		{Number: 42, Status: "NEW", Commit: CommitInfo{Commit: "c42"}},
+		{Number: 41, Status: "NEW", RevisionNumber: 1, CurrentRevisionNumber: 3, Commit: CommitInfo{Commit: "c41"}},
+	}
+	if p, ok := ParentChange(change, related); !ok || p.Number != 41 || p.CurrentRevisionNumber != 3 {
+		t.Fatalf("got %+v, %v", p, ok)
+	}
+	related[2].Status = "MERGED"
+	if _, ok := ParentChange(change, related); ok {
+		t.Fatal("a merged parent is part of the branch, not a parent change")
 	}
 }

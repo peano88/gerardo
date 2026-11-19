@@ -182,12 +182,23 @@ func (c *Client) Submit(ctx context.Context, change string) error {
 	return nil
 }
 
-// Rebase rebases the current patch set of a change onto the tip of its branch.
-func (c *Client) Rebase(ctx context.Context, change string) error {
-	if err := c.do(ctx, http.MethodPost, "/changes/"+url.PathEscape(change)+"/rebase", struct{}{}, nil); err != nil {
+// Rebase rebases the current patch set of a change onto base, see RebaseInput.
+func (c *Client) Rebase(ctx context.Context, change, base string) error {
+	if err := c.do(ctx, http.MethodPost, "/changes/"+url.PathEscape(change)+"/rebase", RebaseInput{Base: base}, nil); err != nil {
 		return fmt.Errorf("rebase: %w", err)
 	}
 	return nil
+}
+
+// RelatedChanges fetches the relation chain of the current patch set of a change.
+func (c *Client) RelatedChanges(ctx context.Context, change string) ([]RelatedChangeInfo, error) {
+	var out struct {
+		Changes []RelatedChangeInfo `json:"changes"`
+	}
+	if err := c.get(ctx, "/changes/"+url.PathEscape(change)+"/revisions/current/related", &out); err != nil {
+		return nil, fmt.Errorf("related changes: %w", err)
+	}
+	return out.Changes, nil
 }
 
 // SetReview posts votes and a message on a revision.

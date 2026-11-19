@@ -104,8 +104,42 @@ const PublishAllDrafts = "PUBLISH_ALL_REVISIONS"
 
 // CommitInfo describes the commit of a revision.
 type CommitInfo struct {
-	Subject string `json:"subject"`
-	Message string `json:"message"`
+	// Commit is the SHA-1, set when the commit is not keyed by it.
+	Commit  string       `json:"commit"`
+	Parents []CommitInfo `json:"parents"`
+	Subject string       `json:"subject"`
+	Message string       `json:"message"`
+}
+
+// RelatedChangeInfo is a change of the same relation chain.
+type RelatedChangeInfo struct {
+	Number                int        `json:"_change_number"`
+	RevisionNumber        int        `json:"_revision_number"`
+	CurrentRevisionNumber int        `json:"_current_revision_number"`
+	Status                string     `json:"status"`
+	Commit                CommitInfo `json:"commit"`
+}
+
+// RebaseInput is the target of a rebase: a change number, optionally with
+// "/patchset", a commit SHA-1 or ref, or "" for the tip of the branch.
+type RebaseInput struct {
+	Base string `json:"base"`
+}
+
+// ParentChange returns the open change whose patch set the current revision
+// of change is based on, if any.
+func ParentChange(change *ChangeInfo, related []RelatedChangeInfo) (RelatedChangeInfo, bool) {
+	rev, ok := change.Current()
+	if !ok || rev.Commit == nil || len(rev.Commit.Parents) == 0 {
+		return RelatedChangeInfo{}, false
+	}
+	parent := rev.Commit.Parents[0].Commit
+	for _, r := range related {
+		if r.Commit.Commit == parent && r.Number != change.Number {
+			return r, r.Status == "NEW"
+		}
+	}
+	return RelatedChangeInfo{}, false
 }
 
 // FileInfo describes a file modified by a revision.
