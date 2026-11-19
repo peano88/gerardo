@@ -88,6 +88,7 @@ type dashboard struct {
 	err     error
 	width   int
 	height  int
+	notice  notice
 
 	showPreview bool
 	preview     viewport.Model
@@ -130,7 +131,11 @@ func (d *dashboard) Init() tea.Cmd {
 }
 
 func (d *dashboard) Update(msg tea.Msg) (screen, tea.Cmd) {
+	d.notice.update(msg)
 	switch msg := msg.(type) {
+	case copiedMsg:
+		return d, nil
+
 	case changesLoadedMsg:
 		d.loading, d.err = false, msg.err
 		if msg.self != nil {
@@ -185,6 +190,11 @@ func (d *dashboard) Update(msg tea.Msg) (screen, tea.Cmd) {
 			d.showPreview = !d.showPreview
 			d.layout()
 			return d, d.schedulePreview()
+		case "y":
+			if n, ok := d.selected(); ok {
+				return d, copyNumber(n)
+			}
+			return d, nil
 		case "J":
 			d.preview.ScrollDown(3)
 			return d, nil
@@ -287,11 +297,11 @@ func (d *dashboard) View() string {
 }
 
 func (d *dashboard) Status() string {
-	help := "enter open · r reload · q quit"
+	help := "enter open · y copy number · r reload · q quit"
 	if d.width >= previewMinWidth {
-		help = "enter open · J/K scroll preview · P toggle preview · r reload · q quit"
+		help = "enter open · y copy number · J/K scroll preview · P toggle preview · r reload · q quit"
 	}
-	return status(d.loading, d.err, fmt.Sprintf("%d changes · %s · %s", len(d.changes), d.query, help))
+	return d.notice.status(d.loading, d.err, fmt.Sprintf("%d changes · %s · %s", len(d.changes), d.query, help))
 }
 
 func (d *dashboard) SetSize(width, height int) {

@@ -123,3 +123,18 @@ func TestDashboardNarrowHasNoPreview(t *testing.T) {
 		t.Fatal("P should hide the preview")
 	}
 }
+
+func TestDashboardCopyNumber(t *testing.T) {
+	d := loadedDashboard(t, 80)
+	if _, cmd := d.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("y")}); cmd == nil {
+		t.Fatal("y should copy the selected change number")
+	}
+	d.Update(copiedMsg{text: "1"})
+	if !strings.Contains(d.Status(), "copied 1") {
+		t.Fatalf("status should confirm the copy: %q", d.Status())
+	}
+	d.Update(tea.KeyMsg{Type: tea.KeyDown})
+	if strings.Contains(d.Status(), "copied") {
+		t.Fatal("the next key press should clear the notice")
+	}
+}

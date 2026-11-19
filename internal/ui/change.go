@@ -24,6 +24,7 @@ type changeScreen struct {
 	viewport viewport.Model
 	loading  bool
 	err      error
+	notice   notice
 }
 
 func newChangeScreen(client *gerrit.Client, number int) *changeScreen {
@@ -42,7 +43,11 @@ func (s *changeScreen) Init() tea.Cmd {
 }
 
 func (s *changeScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
+	s.notice.update(msg)
 	switch msg := msg.(type) {
+	case copiedMsg:
+		return s, nil
+
 	case changeLoadedMsg:
 		if msg.number != s.number {
 			return s, nil
@@ -64,6 +69,8 @@ func (s *changeScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
 			return s, pop
 		case "r":
 			return s, s.Init()
+		case "y":
+			return s, copyNumber(s.number)
 		case "v":
 			if s.change == nil {
 				return s, nil
@@ -90,8 +97,8 @@ func (s *changeScreen) View() string {
 }
 
 func (s *changeScreen) Status() string {
-	return status(s.loading, s.err,
-		fmt.Sprintf("%3.0f%% · ↑/↓ scroll · f files · v vote · r reload · esc back", s.viewport.ScrollPercent()*100))
+	return s.notice.status(s.loading, s.err,
+		fmt.Sprintf("%3.0f%% · ↑/↓ scroll · f files · v vote · y copy number · r reload · esc back", s.viewport.ScrollPercent()*100))
 }
 
 func (s *changeScreen) SetSize(width, height int) {
