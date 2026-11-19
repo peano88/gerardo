@@ -35,6 +35,10 @@ func (s *helpScreen) View() string {
 	return s.viewport.View()
 }
 
+func (s *helpScreen) Title() string {
+	return s.title
+}
+
 func (s *helpScreen) Status() string {
 	return status(false, nil, s.title+" · esc close")
 }

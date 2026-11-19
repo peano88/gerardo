@@ -282,9 +282,13 @@ func (d *dashboard) renderPreview() {
 func (d *dashboard) View() string {
 	body := d.listView(d.width)
 	if d.split() {
-		body = lipgloss.JoinHorizontal(lipgloss.Top, d.listView(d.listWidth()), previewBorder.Height(d.bodyHeight()).Render(d.preview.View()))
+		body = lipgloss.JoinHorizontal(lipgloss.Top, d.listView(d.listWidth()), previewBorder.Height(d.height).Render(d.preview.View()))
 	}
-	return d.titleBar() + "\n" + body
+	return body
+}
+
+func (d *dashboard) Title() string {
+	return "Dashboard"
 }
 
 func (d *dashboard) Status() string {
@@ -309,7 +313,7 @@ func (d *dashboard) listWidth() int {
 
 func (d *dashboard) layout() {
 	if d.split() {
-		d.preview.Width, d.preview.Height = d.width-d.listWidth()-2, d.bodyHeight()
+		d.preview.Width, d.preview.Height = d.width-d.listWidth()-2, d.height
 		if d.previewFor != 0 {
 			d.renderPreview()
 		}

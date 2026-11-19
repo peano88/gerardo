@@ -274,6 +274,10 @@ func (s *reviewScreen) View() string {
 	return b.String()
 }
 
+func (s *reviewScreen) Title() string {
+	return "Vote"
+}
+
 func (s *reviewScreen) Status() string {
 	help := "↑/↓ label · ←/→ vote · tab message · ctrl+s send · esc cancel"
 	if s.editing {

@@ -2,11 +2,13 @@
 package ui
 
 import (
+	"net/url"
 	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/peano88/gerrit-tui/internal/gerrit"
 )
@@ -20,7 +22,14 @@ type screen interface {
 	Update(msg tea.Msg) (screen, tea.Cmd)
 	View() string
 	Status() string
+	// Title is the breadcrumb of the screen in the title bar.
+	Title() string
 	SetSize(width, height int)
+}
+
+// titleInfoer is a screen showing information on the right of the title bar.
+type titleInfoer interface {
+	TitleInfo() string
 }
 
 type pushMsg struct{ screen screen }
@@ -39,13 +48,14 @@ func pop() tea.Msg { return popMsg{} }
 // App is the root Bubble Tea model holding the navigation stack.
 type App struct {
 	stack  []screen
+	host   string
 	width  int
 	height int
 }
 
 // New creates the application starting on the dashboard for query.
 func New(client *gerrit.Client, query string) App {
-	return App{stack: []screen{newDashboard(client, query)}}
+	return App{stack: []screen{newDashboard(client, query)}, host: hostOf(client)}
 }
 
 // Init initializes the first screen.
@@ -88,7 +98,52 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the top screen and its status line.
 func (a App) View() string {
-	return lipgloss.JoinVertical(lipgloss.Left, a.top().View(), a.top().Status())
+	return lipgloss.JoinVertical(lipgloss.Left, a.titleBar(), a.top().View(), a.top().Status())
+}
+
+var (
+	badgeStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("0")).Background(lipgloss.Color("12")).Padding(0, 1)
+	crumbSep    = dimStyle.Render(" › ")
+	activeCrumb = lipgloss.NewStyle().Bold(true)
+)
+
+// titleBar shows the server and the breadcrumbs of the navigation stack,
+// with the information of the top screen on the right.
+func (a App) titleBar() string {
+	var crumbs []string
+	for i, s := range a.stack {
+		if i == len(a.stack)-1 {
+			crumbs = append(crumbs, activeCrumb.Render(s.Title()))
+		} else {
+			crumbs = append(crumbs, dimStyle.Render(s.Title()))
+		}
+	}
+	left := badgeStyle.Render("gerrit") + " "
+	if a.host != "" {
+		left += dimStyle.Render(a.host) + crumbSep
+	}
+	left += strings.Join(crumbs, crumbSep)
+
+	var right string
+	if t, ok := a.top().(titleInfoer); ok {
+		right = t.TitleInfo()
+	}
+	gap := a.width - ansi.StringWidth(left) - ansi.StringWidth(right) - 1
+	if right == "" || gap < 2 {
+		return ansi.Truncate(left, a.width, "…")
+	}
+	return left + strings.Repeat(" ", gap) + right
+}
+
+func hostOf(c *gerrit.Client) string {
+	if c == nil {
+		return ""
+	}
+	u, err := url.Parse(c.BaseURL())
+	if err != nil || u.Host == "" {
+		return c.BaseURL()
+	}
+	return u.Host
 }
 
 func (a App) top() screen {
@@ -96,7 +151,7 @@ func (a App) top() screen {
 }
 
 func (a App) bodySize() (int, int) {
-	return a.width, max(a.height-1, 1)
+	return a.width, max(a.height-2, 1)
 }
 
 var hintKeyStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Bold(true)

@@ -116,6 +116,10 @@ func (s *changeScreen) View() string {
 	return s.viewport.View()
 }
 
+func (s *changeScreen) Title() string {
+	return strconv.Itoa(s.number)
+}
+
 func (s *changeScreen) Status() string {
 	return s.notice.status(s.loading, s.err, dimStyle.Render(fmt.Sprintf("%3.0f%%", s.viewport.ScrollPercent()*100))+"   "+
 		keyHints("↑/↓", "scroll", "f", "files", "v", "vote", "m", s.messagesHint(), "y", "copy number", "r", "reload", "esc", "back"))

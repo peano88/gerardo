@@ -2,7 +2,6 @@ package ui
 
 import (
 	"fmt"
-	"net/url"
 	"strconv"
 	"strings"
 
@@ -23,7 +22,6 @@ var (
 	attention     = lipgloss.Color("3")
 	attentionDot  = lipgloss.NewStyle().Foreground(attention).Render("●")
 	unresolvedSt  = lipgloss.NewStyle().Foreground(attention)
-	badgeStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("0")).Background(accent).Padding(0, 1)
 )
 
 const (
@@ -88,14 +86,9 @@ func (d *dashboard) selectNumber(n int) {
 	d.scroll()
 }
 
-// bodyHeight is the height below the title bar.
-func (d *dashboard) bodyHeight() int {
-	return max(d.height-1, 1)
-}
-
 // listHeight is the number of item lines below the column header.
 func (d *dashboard) listHeight() int {
-	return max(d.bodyHeight()-1, 1)
+	return max(d.height-1, 1)
 }
 
 // scroll keeps the cursor visible, with the header of its section when it
@@ -128,18 +121,17 @@ func (d *dashboard) listView(width int) string {
 			lines = append(lines, changeLine(d.items[i].change, cols, i == d.cursor, d.needsAttention(d.items[i].change)))
 		}
 	}
-	return lipgloss.NewStyle().Width(width).Height(d.bodyHeight()).Render(strings.Join(lines, "\n"))
+	return lipgloss.NewStyle().Width(width).Height(d.height).Render(strings.Join(lines, "\n"))
 }
 
 func (d *dashboard) needsAttention(c *gerrit.ChangeInfo) bool {
 	return d.self != nil && c.NeedsAttention(d.self.AccountID)
 }
 
-// titleBar shows the server and query, with the number of changes and of
-// those waiting on the user on the right.
-func (d *dashboard) titleBar() string {
-	left := badgeStyle.Render("gerrit") + " " + dimStyle.Render(hostOf(d.client)) + "  " + d.query
-	var counts []string
+// TitleInfo shows the query, with the number of changes and of those
+// waiting on the user.
+func (d *dashboard) TitleInfo() string {
+	info := []string{dimStyle.Render(d.query)}
 	if !d.loading {
 		waiting := 0
 		for i := range d.changes {
@@ -148,27 +140,11 @@ func (d *dashboard) titleBar() string {
 			}
 		}
 		if waiting > 0 {
-			counts = append(counts, attentionDot+" "+unresolvedSt.Render(fmt.Sprintf("%d waiting on you", waiting)))
+			info = append(info, attentionDot+" "+unresolvedSt.Render(fmt.Sprintf("%d waiting on you", waiting)))
 		}
-		counts = append(counts, dimStyle.Render(fmt.Sprintf("%d changes", len(d.changes))))
+		info = append(info, dimStyle.Render(fmt.Sprintf("%d changes", len(d.changes))))
 	}
-	right := strings.Join(counts, dimStyle.Render("  ·  "))
-	gap := d.width - ansi.StringWidth(left) - ansi.StringWidth(right) - 1
-	if gap < 1 {
-		return ansi.Truncate(left, d.width, "…")
-	}
-	return left + strings.Repeat(" ", gap) + right
-}
-
-func hostOf(c *gerrit.Client) string {
-	if c == nil {
-		return ""
-	}
-	u, err := url.Parse(c.BaseURL())
-	if err != nil || u.Host == "" {
-		return c.BaseURL()
-	}
-	return u.Host
+	return strings.Join(info, dimStyle.Render("  ·  "))
 }
 
 func (d *dashboard) columnHeader(c dashColumns) string {

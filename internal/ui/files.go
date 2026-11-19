@@ -143,6 +143,10 @@ func (s *filesScreen) View() string {
 	return s.table.View()
 }
 
+func (s *filesScreen) Title() string {
+	return fmt.Sprintf("PS%d files", s.rev.Number)
+}
+
 func (s *filesScreen) Status() string {
 	return status(s.loading, s.err, fmt.Sprintf("%d: PS%d · %d files · enter diff · r reload · esc back", s.change.Number, s.rev.Number, len(s.paths)))
 }

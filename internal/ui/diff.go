@@ -705,6 +705,10 @@ func (s *diffScreen) View() string {
 	return s.viewport.View()
 }
 
+func (s *diffScreen) Title() string {
+	return s.path()
+}
+
 func (s *diffScreen) Status() string {
 	unresolved, drafts := 0, 0
 	for _, t := range s.threads {

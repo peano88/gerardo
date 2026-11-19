@@ -177,10 +177,10 @@ func TestDashboardAttention(t *testing.T) {
 			AttentionSet: map[string]gerrit.AttentionSetInfo{"7": {Account: me}}},
 		{Number: 2, Subject: "idle", Owner: me},
 	}})
-	lines := plainLines(d.View())
-	if !strings.Contains(lines[0], "1 waiting on you") || !strings.Contains(lines[0], "2 changes") {
-		t.Fatalf("title bar should count the changes waiting on the user: %q", lines[0])
+	if info := ansiRe.ReplaceAllString(d.TitleInfo(), ""); !strings.Contains(info, "1 waiting on you") || !strings.Contains(info, "2 changes") {
+		t.Fatalf("title bar should count the changes waiting on the user: %q", info)
 	}
+	lines := plainLines(d.View())
 	for _, l := range lines {
 		switch {
 		case strings.Contains(l, "1  waiting"):

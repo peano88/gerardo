@@ -221,19 +221,22 @@ func (s *stubScreen) Init() tea.Cmd                    { return nil }
 func (s *stubScreen) Update(tea.Msg) (screen, tea.Cmd) { return s, nil }
 func (s *stubScreen) View() string                     { return s.name }
 func (s *stubScreen) Status() string                   { return "" }
+func (s *stubScreen) Title() string                    { return s.name }
 func (s *stubScreen) SetSize(int, int)                 {}
 
 func TestAppNavigation(t *testing.T) {
-	var app tea.Model = App{stack: []screen{&stubScreen{name: "root"}}}
+	var app tea.Model = App{stack: []screen{&stubScreen{name: "root"}}, width: 80, height: 10}
+	body := func() string { return plainLines(app.View())[1] }
+	title := func() string { return plainLines(app.View())[0] }
 
 	app, _ = app.Update(pushMsg{screen: &stubScreen{name: "child"}})
-	if v := app.View(); !strings.HasPrefix(v, "child") {
-		t.Fatalf("after push: got %q", v)
+	if body() != "child" || title() != " gerrit  root › child" {
+		t.Fatalf("after push: got title %q, body %q", title(), body())
 	}
 
 	app, cmd := app.Update(popMsg{})
-	if v := app.View(); !strings.HasPrefix(v, "root") {
-		t.Fatalf("after pop: got %q", v)
+	if body() != "root" || title() != " gerrit  root" {
+		t.Fatalf("after pop: got title %q, body %q", title(), body())
 	}
 	if _, ok := cmd().(focusMsg); !ok {
 		t.Fatal("pop should focus the uncovered screen")
