@@ -125,6 +125,7 @@ type RevisionInfo struct {
 
 // ChangeMessageInfo is a top-level message posted on a change.
 type ChangeMessageInfo struct {
+	ID             string       `json:"id"`
 	Author         *AccountInfo `json:"author"`
 	Date           Timestamp    `json:"date"`
 	Message        string       `json:"message"`

@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -62,9 +63,14 @@ func sortedKeys[V any](m map[string]V) []string {
 	return keys
 }
 
-// renderChange renders a change, with the messages of the older patch sets
-// collapsed unless allPatchSets.
-func renderChange(c *gerrit.ChangeInfo, width int, allPatchSets bool) string {
+type changeView struct {
+	// allPatchSets expands the messages of the older patch sets.
+	allPatchSets bool
+	// comments maps message IDs to the inline comments published with them.
+	comments map[string][]gerrit.CommentInfo
+}
+
+func renderChange(c *gerrit.ChangeInfo, width int, view changeView) string {
 	var b strings.Builder
 
 	status := c.Status
@@ -133,7 +139,7 @@ func renderChange(c *gerrit.ChangeInfo, width int, allPatchSets bool) string {
 	wrap := lipgloss.NewStyle().Width(max(width-6, 20)).PaddingLeft(6)
 	for i, g := range groups {
 		count := dimStyle.Render(fmt.Sprintf(" · %s", plural(len(g.messages), "message")))
-		if !allPatchSets && i < len(groups)-1 {
+		if !view.allPatchSets && i < len(groups)-1 {
 			last := g.messages[len(g.messages)-1].Date.Local().Format("2006-01-02")
 			summary := fmt.Sprintf("  ▸ %s · %s · %s · %s", g.title(), plural(len(g.messages), "message"), g.authors(), last)
 			b.WriteString(dimStyle.Render(ansi.Truncate(summary, max(width, 20), "…")) + "\n")
@@ -147,13 +153,49 @@ func renderChange(c *gerrit.ChangeInfo, width int, allPatchSets bool) string {
 				header += "  " + renderVotes(votes)
 			}
 			b.WriteString("    " + header + "\n")
+			comments := view.comments[m.ID]
+			if len(comments) > 0 {
+				body = strings.TrimSpace(commentCount.ReplaceAllString(body, ""))
+			}
 			if body != "" {
 				b.WriteString(wrap.Render(body) + "\n")
+			}
+			for _, cm := range comments {
+				b.WriteString(renderMessageComment(cm, width))
 			}
 		}
 	}
 
 	return b.String()
+}
+
+// commentCount matches the "(N comments)" line Gerrit adds to a message.
+var commentCount = regexp.MustCompile(`(?m)^\(\d+ comments?\)$`)
+
+var commentBar = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), false, false, false, true).
+	BorderForeground(lipgloss.Color("8")).PaddingLeft(1)
+
+// renderMessageComment shows an inline comment under its message: where it
+// is, then its text.
+func renderMessageComment(c gerrit.CommentInfo, width int) string {
+	var where string
+	switch c.Path {
+	case gerrit.PatchSetLevel:
+		where = "Patch set"
+	case gerrit.CommitMessage:
+		where = "Commit message"
+	default:
+		where = c.Path
+	}
+	if c.Line > 0 {
+		where += ":" + strconv.Itoa(c.Line)
+	}
+	location := numberStyle.Render(where)
+	if c.Unresolved {
+		location += " " + unresolvedSt.Render("● unresolved")
+	}
+	text := commentBar.Width(max(width-8, 20)).Render(strings.TrimSpace(c.Message))
+	return lipgloss.NewStyle().PaddingLeft(6).Render(location+"\n"+text) + "\n"
 }
 
 // voteToken matches a vote such as "Code-Review+2", or a removed one such as "-Verified".

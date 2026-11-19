@@ -258,7 +258,7 @@ func TestRenderChangeCollapsesOlderPatchSets(t *testing.T) {
 		{Author: bob, RevisionNumber: 2, Message: "Patch Set 2: Code-Review+2"},
 	}}
 
-	got := strings.Join(plainLines(renderChange(c, 80, false)), "\n")
+	got := strings.Join(plainLines(renderChange(c, 80, changeView{})), "\n")
 	switch {
 	case !strings.Contains(got, "▸ Patch Set 1 · 3 messages · Alice, Bob"):
 		t.Fatal("older patch set should be summarized")
@@ -268,7 +268,7 @@ func TestRenderChangeCollapsesOlderPatchSets(t *testing.T) {
 		t.Fatal("latest patch set should be expanded")
 	}
 
-	all := strings.Join(plainLines(renderChange(c, 80, true)), "\n")
+	all := strings.Join(plainLines(renderChange(c, 80, changeView{allPatchSets: true})), "\n")
 	if !strings.Contains(all, "▾ Patch Set 1 · 3 messages") || !strings.Contains(all, "late reply") {
 		t.Fatalf("every patch set should be expanded:\n%s", all)
 	}
@@ -295,5 +295,28 @@ func TestSplitMessage(t *testing.T) {
 		if strings.Join(votes, " ") != tt.votes || body != tt.body {
 			t.Errorf("%q: got votes %q body %q", tt.msg, votes, body)
 		}
+	}
+}
+
+func TestRenderChangeShowsMessageComments(t *testing.T) {
+	c := &gerrit.ChangeInfo{Number: 1, Subject: "s", Messages: []gerrit.ChangeMessageInfo{
+		{ID: "m1", Author: &gerrit.AccountInfo{Name: "Me"}, RevisionNumber: 2, Message: "Patch Set 2:\n\n(2 comments)"},
+	}}
+	comments := map[string][]gerrit.CommentInfo{"m1": {
+		{Path: gerrit.PatchSetLevel, Message: "overall fine"},
+		{Path: "main.go", Line: 42, Message: "rename this", Unresolved: true},
+	}}
+
+	got := strings.Join(plainLines(renderChange(c, 80, changeView{comments: comments})), "\n")
+	for _, want := range []string{"Patch set\n", "│ overall fine", "main.go:42 ● unresolved", "│ rename this"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "(2 comments)") {
+		t.Errorf("the comment count is redundant once the comments are shown:\n%s", got)
+	}
+	if bare := strings.Join(plainLines(renderChange(c, 80, changeView{})), "\n"); !strings.Contains(bare, "(2 comments)") {
+		t.Errorf("without the comments the count should stay:\n%s", bare)
 	}
 }

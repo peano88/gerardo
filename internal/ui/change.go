@@ -2,8 +2,10 @@ package ui
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
+	"sync"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -12,9 +14,10 @@ import (
 )
 
 type changeLoadedMsg struct {
-	number int
-	change *gerrit.ChangeInfo
-	err    error
+	number   int
+	change   *gerrit.ChangeInfo
+	comments map[string][]gerrit.CommentInfo
+	err      error
 }
 
 type changeScreen struct {
@@ -26,6 +29,8 @@ type changeScreen struct {
 	err      error
 	notice   notice
 
+	// comments maps message IDs to the inline comments published with them.
+	comments     map[string][]gerrit.CommentInfo
 	allPatchSets bool
 }
 
@@ -39,8 +44,16 @@ func (s *changeScreen) Init() tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
-		change, err := client.GetChange(ctx, strconv.Itoa(number))
-		return changeLoadedMsg{number: number, change: change, err: err}
+		var (
+			wg                    sync.WaitGroup
+			change                *gerrit.ChangeInfo
+			comments              map[string][]gerrit.CommentInfo
+			changeErr, commentErr error
+		)
+		wg.Go(func() { change, changeErr = client.GetChange(ctx, strconv.Itoa(number)) })
+		wg.Go(func() { comments, commentErr = client.ListComments(ctx, strconv.Itoa(number)) })
+		wg.Wait()
+		return changeLoadedMsg{number: number, change: change, comments: comments, err: errors.Join(changeErr, commentErr)}
 	}
 }
 
@@ -55,8 +68,9 @@ func (s *changeScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
 			return s, nil
 		}
 		s.loading, s.err = false, msg.err
-		if msg.err == nil {
+		if msg.change != nil {
 			s.change = msg.change
+			s.comments = gerrit.MessageComments(msg.change.Messages, msg.comments)
 			s.render()
 			s.viewport.GotoTop()
 		}
@@ -121,6 +135,6 @@ func (s *changeScreen) SetSize(width, height int) {
 
 func (s *changeScreen) render() {
 	if s.change != nil {
-		s.viewport.SetContent(renderChange(s.change, s.viewport.Width, s.allPatchSets))
+		s.viewport.SetContent(renderChange(s.change, s.viewport.Width, changeView{allPatchSets: s.allPatchSets, comments: s.comments}))
 	}
 }

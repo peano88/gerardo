@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -184,5 +185,35 @@ func TestListComments(t *testing.T) {
 	want := []string{"/a/changes/42/comments", "/a/changes/42/revisions/abc/ported_comments"}
 	if len(paths) != 2 || paths[0] != want[0] || paths[1] != want[1] {
 		t.Fatalf("got paths %v, want %v", paths, want)
+	}
+}
+
+func TestMessageComments(t *testing.T) {
+	bob := &AccountInfo{AccountID: 8}
+	messages := []ChangeMessageInfo{
+		{ID: "m1", Author: bob, RevisionNumber: 1, Date: at(0)},
+		{ID: "m2", Author: bob, RevisionNumber: 2, Date: at(5)},
+	}
+	comments := map[string][]CommentInfo{
+		"b.go":        {{ID: "c1", Path: "b.go", Line: 3, ChangeMessageID: "m2"}},
+		"a.go":        {{ID: "c2", Path: "a.go", Line: 9, ChangeMessageID: "m2"}, {ID: "c3", Path: "a.go", Line: 1, ChangeMessageID: "m2"}},
+		PatchSetLevel: {{ID: "c4", Path: PatchSetLevel, ChangeMessageID: "m2"}},
+		// An older server without change_message_id.
+		"c.go": {{ID: "c5", Path: "c.go", Author: bob, PatchSet: 1, Updated: at(0)}, {ID: "c6", Path: "c.go", Author: bob, PatchSet: 1, Updated: at(1)}},
+	}
+
+	got := MessageComments(messages, comments)
+	idsOf := func(list []CommentInfo) string {
+		var s []string
+		for _, c := range list {
+			s = append(s, c.ID)
+		}
+		return strings.Join(s, ",")
+	}
+	if idsOf(got["m2"]) != "c4,c3,c2,c1" {
+		t.Errorf("m2: got %s, want the patch set comment then by file and line", idsOf(got["m2"]))
+	}
+	if idsOf(got["m1"]) != "c5" {
+		t.Errorf("m1: got %s, want only the comment published with it", idsOf(got["m1"]))
 	}
 }

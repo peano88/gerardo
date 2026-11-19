@@ -32,7 +32,9 @@ type CommentInfo struct {
 	Author     *AccountInfo  `json:"author"`
 	PatchSet   int           `json:"patch_set"`
 	Unresolved bool          `json:"unresolved"`
-	Draft      bool          `json:"-"`
+	// ChangeMessageID is the message the comment was published with.
+	ChangeMessageID string `json:"change_message_id"`
+	Draft           bool   `json:"-"`
 }
 
 // CommentInput is the payload to create or update a draft comment. A zero
@@ -45,6 +47,58 @@ type CommentInput struct {
 	InReplyTo  string `json:"in_reply_to,omitempty"`
 	Message    string `json:"message"`
 	Unresolved *bool  `json:"unresolved,omitempty"`
+}
+
+// Special comment paths.
+const (
+	PatchSetLevel = "/PATCHSET_LEVEL"
+	CommitMessage = "/COMMIT_MSG"
+)
+
+// MessageComments maps message IDs to the comments published with them,
+// ordered by file and line. Comments from servers that do not link them to
+// their message are matched on author, patch set and publication time.
+func MessageComments(messages []ChangeMessageInfo, comments map[string][]CommentInfo) map[string][]CommentInfo {
+	byMessage := map[string][]CommentInfo{}
+	for _, list := range comments {
+		for _, c := range list {
+			id := c.ChangeMessageID
+			if id == "" {
+				id = matchMessage(messages, c)
+			}
+			if id != "" {
+				byMessage[id] = append(byMessage[id], c)
+			}
+		}
+	}
+	for _, list := range byMessage {
+		slices.SortFunc(list, func(a, b CommentInfo) int {
+			return cmp.Or(cmp.Compare(pathOrder(a.Path), pathOrder(b.Path)), cmp.Compare(a.Path, b.Path), cmp.Compare(a.Line, b.Line))
+		})
+	}
+	return byMessage
+}
+
+func matchMessage(messages []ChangeMessageInfo, c CommentInfo) string {
+	for _, m := range messages {
+		if m.RevisionNumber == c.PatchSet && m.Date.Equal(c.Updated.Time) &&
+			m.Author != nil && c.Author != nil && m.Author.AccountID == c.Author.AccountID {
+			return m.ID
+		}
+	}
+	return ""
+}
+
+// pathOrder puts patch set level comments first, then the commit message.
+func pathOrder(path string) int {
+	switch path {
+	case PatchSetLevel:
+		return 0
+	case CommitMessage:
+		return 1
+	default:
+		return 2
+	}
 }
 
 // OnParent reports whether the comment is on the parent (left) side of the diff.
