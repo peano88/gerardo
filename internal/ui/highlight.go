@@ -12,8 +12,15 @@ import (
 	"github.com/peano88/gerrit-tui/internal/gerrit"
 )
 
-// SyntaxStyle is the chroma style used to highlight diffs.
-var SyntaxStyle = "catppuccin-mocha"
+// Settings applying to every screen, set before the program starts.
+var (
+	// SyntaxStyle is the chroma style used to highlight diffs.
+	SyntaxStyle = "catppuccin-mocha"
+	// SideBySide shows diffs side by side by default.
+	SideBySide bool
+	// PageSize is the number of changes fetched per query page.
+	PageSize = 50
+)
 
 // span styles the bytes [start, end) of a line.
 type span struct {

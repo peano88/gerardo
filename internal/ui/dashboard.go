@@ -20,8 +20,6 @@ const (
 	previewMinWidth = 140
 	// previewDelay lets the cursor settle before a preview is fetched.
 	previewDelay = 150 * time.Millisecond
-	// pageSize is the number of changes fetched per query page.
-	pageSize = 50
 	// prefetchMargin is how close to the end the cursor gets before the
 	// next page is fetched.
 	prefetchMargin = 10
@@ -138,7 +136,7 @@ func newResults(client *gerrit.Client, query string, self *gerrit.AccountInfo, r
 func (d *dashboard) Init() tea.Cmd {
 	d.loading, d.loadingMore = true, false
 	d.gen++
-	return d.fetch(0, max(pageSize, len(d.changes)))
+	return d.fetch(0, max(PageSize, len(d.changes)))
 }
 
 // maybeLoadMore fetches the next page once the cursor nears the end.
@@ -147,7 +145,7 @@ func (d *dashboard) maybeLoadMore() tea.Cmd {
 		return nil
 	}
 	d.loadingMore = true
-	return d.fetch(len(d.changes), pageSize)
+	return d.fetch(len(d.changes), PageSize)
 }
 
 func (d *dashboard) fetch(start, limit int) tea.Cmd {

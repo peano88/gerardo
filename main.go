@@ -11,6 +11,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/peano88/gerrit-tui/internal/config"
 	"github.com/peano88/gerrit-tui/internal/gerrit"
 	"github.com/peano88/gerrit-tui/internal/ui"
 )
@@ -23,10 +24,25 @@ func main() {
 }
 
 func run() error {
-	baseURL := flag.String("url", envOr("GERRIT_URL", "https://review.example.com"), "Gerrit server URL")
-	query := flag.String("q", "is:open (owner:self OR reviewer:self)", "Gerrit search query for the dashboard")
-	flag.StringVar(&ui.SyntaxStyle, "style", envOr("GERRIT_TUI_STYLE", ui.SyntaxStyle), "chroma style used to highlight diffs")
+	configPath, err := config.Path()
+	if err != nil {
+		return err
+	}
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		return err
+	}
+
+	baseURL := flag.String("url", envOr("GERRIT_URL", cfg.URL), "Gerrit server URL")
+	query := flag.String("q", cfg.Query, "Gerrit search query for the dashboard")
+	flag.StringVar(&ui.SyntaxStyle, "style", envOr("GERRIT_TUI_STYLE", cfg.Style), "chroma style used to highlight diffs")
+	flag.BoolVar(&ui.SideBySide, "side-by-side", cfg.SideBySide, "show diffs side by side")
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage: gerrit-tui [flags]\n\nFlags override the environment, which overrides %s.\n\n", configPath)
+		flag.PrintDefaults()
+	}
 	flag.Parse()
+	ui.PageSize = cfg.PageSize
 
 	user, password, err := credentials(*baseURL)
 	if err != nil {

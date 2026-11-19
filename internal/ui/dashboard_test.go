@@ -204,7 +204,7 @@ func TestDashboardLoadsMorePages(t *testing.T) {
 	d := newResults(nil, "status:merged", nil, &[]string{})
 	d.SetSize(100, 10)
 	d.Init()
-	d.Update(changesLoadedMsg{gen: d.gen, changes: page(1, pageSize), more: true})
+	d.Update(changesLoadedMsg{gen: d.gen, changes: page(1, PageSize), more: true})
 	if d.loadingMore || !strings.Contains(d.TitleInfo(), "50+ changes") {
 		t.Fatal("first page should not fetch more until the cursor nears the end")
 	}
@@ -218,15 +218,15 @@ func TestDashboardLoadsMorePages(t *testing.T) {
 	}
 
 	// A page from before a reload is dropped.
-	d.Update(changesLoadedMsg{gen: d.gen - 1, start: pageSize, changes: page(999, 1)})
-	if len(d.changes) != pageSize {
+	d.Update(changesLoadedMsg{gen: d.gen - 1, start: PageSize, changes: page(999, 1)})
+	if len(d.changes) != PageSize {
 		t.Fatal("stale page should be ignored")
 	}
-	d.Update(changesLoadedMsg{gen: d.gen, start: pageSize, changes: page(pageSize+1, 3)})
-	if len(d.changes) != pageSize+3 || d.more || d.loadingMore {
+	d.Update(changesLoadedMsg{gen: d.gen, start: PageSize, changes: page(PageSize+1, 3)})
+	if len(d.changes) != PageSize+3 || d.more || d.loadingMore {
 		t.Fatalf("next page should be appended, got %d changes", len(d.changes))
 	}
-	if n, _ := d.selected(); n != pageSize {
+	if n, _ := d.selected(); n != PageSize {
 		t.Fatalf("appending should keep the selection, got %d", n)
 	}
 	if d.items[0].change == nil {

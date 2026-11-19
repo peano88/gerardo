@@ -73,7 +73,7 @@ func newDiffScreen(client *gerrit.Client, change *gerrit.ChangeInfo, paths []str
 	vp.SetHorizontalStep(hScrollStep)
 	in := textinput.New()
 	in.Prompt = "/"
-	return &diffScreen{client: client, change: change, paths: paths, index: index, viewport: vp, searchInput: in}
+	return &diffScreen{client: client, change: change, paths: paths, index: index, viewport: vp, searchInput: in, sideBySide: SideBySide}
 }
 
 func (s *diffScreen) path() string {
