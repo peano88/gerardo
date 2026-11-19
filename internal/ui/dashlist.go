@@ -147,25 +147,26 @@ func (d *dashboard) needsAttention(c *gerrit.ChangeInfo) bool {
 // waiting on the user.
 func (d *dashboard) TitleInfo() string {
 	info := []string{dimStyle.Render(d.query)}
+	listed, hidden := d.listed()
 	switch {
-	case d.filtering():
-		info = append(info, dimStyle.Render("⊘ "+summarize(HiddenProjects, 2)+" hidden"))
-	case len(HiddenProjects) > 0:
-		info = append(info, unresolvedSt.Render("showing hidden projects"))
+	case d.showHidden:
+		info = append(info, unresolvedSt.Render("showing filtered changes"))
+	case hidden > 0:
+		info = append(info, dimStyle.Render(fmt.Sprintf("⊘ %d in %s hidden", hidden, summarize(paths.patterns, 2))))
 	}
 	if !d.loading {
 		waiting := 0
-		for i := range d.changes {
-			if d.needsAttention(&d.changes[i]) {
+		for i := range listed {
+			if d.needsAttention(&listed[i]) {
 				waiting++
 			}
 		}
 		if waiting > 0 {
 			info = append(info, attentionDot+" "+unresolvedSt.Render(fmt.Sprintf("%d waiting on you", waiting)))
 		}
-		count := fmt.Sprintf("%d changes", len(d.changes))
+		count := fmt.Sprintf("%d changes", len(listed))
 		if d.more {
-			count = fmt.Sprintf("%d+ changes", len(d.changes))
+			count = fmt.Sprintf("%d+ changes", len(listed))
 		}
 		info = append(info, dimStyle.Render(count))
 	}

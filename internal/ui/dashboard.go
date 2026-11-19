@@ -97,7 +97,7 @@ type dashboard struct {
 	self    *gerrit.AccountInfo
 	loading bool
 	err     error
-	// showHidden lists the changes of HiddenProjects too.
+	// showHidden lists the changes hidden by the path filter too.
 	showHidden bool
 	// more is set when further pages match; gen tells stale pages apart.
 	more        bool
@@ -150,16 +150,30 @@ func (d *dashboard) maybeLoadMore() tea.Cmd {
 	return d.fetch(len(d.changes), PageSize)
 }
 
-// filtering reports whether changes of hidden projects are left out.
-func (d *dashboard) filtering() bool {
-	return len(HiddenProjects) > 0 && !d.showHidden
+// listed returns the changes to list, and how many the path filter hides.
+func (d *dashboard) listed() ([]gerrit.ChangeInfo, int) {
+	if d.showHidden || !paths.active() {
+		return d.changes, 0
+	}
+	var out []gerrit.ChangeInfo
+	for i := range d.changes {
+		if !paths.hides(&d.changes[i]) {
+			out = append(out, d.changes[i])
+		}
+	}
+	return out, len(d.changes) - len(out)
+}
+
+// relist lists the changes again, keeping the selection.
+func (d *dashboard) relist() {
+	prev, _ := d.selected()
+	listed, _ := d.listed()
+	d.items = groupChanges(listed, d.groupBy())
+	d.selectNumber(prev)
 }
 
 func (d *dashboard) fetch(start, limit int) tea.Cmd {
-	client, query, self, gen := d.client, d.query, d.self, d.gen
-	if d.filtering() {
-		query = gerrit.ExcludeProjects(query, HiddenProjects, VisibleProjects)
-	}
+	client, query, self, gen, withFiles := d.client, d.query, d.self, d.gen, paths.active()
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
@@ -170,7 +184,7 @@ func (d *dashboard) fetch(start, limit int) tea.Cmd {
 			more              bool
 			queryErr, selfErr error
 		)
-		wg.Go(func() { changes, more, queryErr = client.QueryChanges(ctx, query, start, limit) })
+		wg.Go(func() { changes, more, queryErr = client.QueryChanges(ctx, query, start, limit, withFiles) })
 		if self == nil {
 			wg.Go(func() { self, selfErr = client.Self(ctx) })
 		}
@@ -199,7 +213,6 @@ func (d *dashboard) Update(msg tea.Msg) (screen, tea.Cmd) {
 			d.loadingMore = false
 		}
 		if msg.err == nil || msg.changes != nil {
-			prev, _ := d.selected()
 			if msg.start == 0 {
 				d.changes = msg.changes
 				d.previewFor = 0
@@ -207,8 +220,7 @@ func (d *dashboard) Update(msg tea.Msg) (screen, tea.Cmd) {
 				d.changes = append(d.changes, msg.changes...)
 			}
 			d.more = msg.more
-			d.items = groupChanges(d.changes, d.groupBy())
-			d.selectNumber(prev)
+			d.relist()
 		}
 		return d, tea.Batch(d.schedulePreview(), d.maybeLoadMore())
 
@@ -259,12 +271,13 @@ func (d *dashboard) Update(msg tea.Msg) (screen, tea.Cmd) {
 			clear(d.previews)
 			return d, d.Init()
 		case "H":
-			if len(HiddenProjects) == 0 {
-				d.notice = notice{text: "set hidden_projects in the config file to hide projects"}
+			if !paths.active() {
+				d.notice = notice{text: "set hidden_paths in the config file to hide changes"}
 				return d, nil
 			}
 			d.showHidden = !d.showHidden
-			return d, d.Init()
+			d.relist()
+			return d, tea.Batch(d.schedulePreview(), d.maybeLoadMore())
 		case "P":
 			d.showPreview = !d.showPreview
 			d.layout()
@@ -387,9 +400,9 @@ func (d *dashboard) Status() string {
 	if d.width >= previewMinWidth {
 		hints = append(hints, "J/K", "scroll preview", "P", "toggle preview")
 	}
-	if len(HiddenProjects) > 0 {
+	if paths.active() {
 		if d.showHidden {
-			hints = append(hints, "H", "hide projects")
+			hints = append(hints, "H", "hide filtered")
 		} else {
 			hints = append(hints, "H", "show hidden")
 		}

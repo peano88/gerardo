@@ -9,10 +9,10 @@
 //	style = "catppuccin-mocha"
 //	side_by_side = true
 //	page_size = 50
-//	hidden_projects = ["accounts/*"]
-//	visible_projects = [
-//	  "accounts/pkg",
-//	  "accounts/billing",
+//	hidden_paths = ["services/accounts"]
+//	visible_paths = [
+//	  "services/accounts/pkg",
+//	  "services/accounts/billing",
 //	]
 package config
 
@@ -34,10 +34,10 @@ type Config struct {
 	Style      string
 	SideBySide bool
 	PageSize   int
-	// HiddenProjects are glob patterns of projects left out of the change
-	// lists, unless they match VisibleProjects.
-	HiddenProjects  []string
-	VisibleProjects []string
+	// HiddenPaths are patterns of files: the changes touching only files
+	// matching them, and not VisiblePaths, are left out of the change lists.
+	HiddenPaths  []string
+	VisiblePaths []string
 }
 
 // Default returns the settings used when the file does not set them.
@@ -139,10 +139,10 @@ func (c *Config) set(key, value string) error {
 		if err == nil && (c.PageSize < 1 || c.PageSize > 500) {
 			err = errors.New("must be between 1 and 500")
 		}
-	case "hidden_projects":
-		c.HiddenProjects, err = stringList(value)
-	case "visible_projects":
-		c.VisibleProjects, err = stringList(value)
+	case "hidden_paths":
+		c.HiddenPaths, err = stringList(value)
+	case "visible_paths":
+		c.VisiblePaths, err = stringList(value)
 	default:
 		err = errors.New("unknown setting")
 	}

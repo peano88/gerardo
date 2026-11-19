@@ -38,13 +38,17 @@ func (c *Client) BaseURL() string {
 }
 
 // QueryChanges searches changes using the Gerrit query syntax, returning up
-// to limit of them from start on, and whether more match.
-func (c *Client) QueryChanges(ctx context.Context, query string, start, limit int) ([]ChangeInfo, bool, error) {
+// to limit of them from start on, and whether more match. withFiles adds the
+// files of their current revision.
+func (c *Client) QueryChanges(ctx context.Context, query string, start, limit int, withFiles bool) ([]ChangeInfo, bool, error) {
 	v := url.Values{
 		"q": {query},
 		"S": {fmt.Sprint(start)},
 		"n": {fmt.Sprint(limit)},
 		"o": {"LABELS", "DETAILED_ACCOUNTS"},
+	}
+	if withFiles {
+		v["o"] = append(v["o"], "CURRENT_REVISION", "CURRENT_FILES")
 	}
 	var changes []ChangeInfo
 	if err := c.get(ctx, "/changes/?"+v.Encode(), &changes); err != nil {

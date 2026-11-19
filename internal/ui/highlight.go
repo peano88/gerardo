@@ -20,9 +20,6 @@ var (
 	SideBySide bool
 	// PageSize is the number of changes fetched per query page.
 	PageSize = 50
-	// HiddenProjects are glob patterns of projects left out of the change
-	// lists, unless they match VisibleProjects.
-	HiddenProjects, VisibleProjects []string
 )
 
 // span styles the bytes [start, end) of a line.

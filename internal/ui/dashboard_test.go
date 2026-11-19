@@ -248,33 +248,76 @@ func TestResultsGoBack(t *testing.T) {
 	}
 }
 
-func TestDashboardHidesProjects(t *testing.T) {
-	HiddenProjects, VisibleProjects = []string{"accounts/*"}, []string{"accounts/pkg"}
-	t.Cleanup(func() { HiddenProjects, VisibleProjects = nil, nil })
+func TestPathFilter(t *testing.T) {
+	SetPathFilter([]string{"services/accounts", "legacy/*.go"}, []string{"services/accounts/pkg", "services/accounts/bill?ng/"})
+	t.Cleanup(func() { SetPathFilter(nil, nil) })
+	for path, hidden := range map[string]bool{
+		"services/accounts/api/main.go":    true,
+		"services/accounts":                true,
+		"services/accountsx/main.go":       false,
+		"services/accounts/pkg/x/y.go":     false,
+		"services/accounts/billing/x.go": false,
+		"services/payments/main.go":         false,
+		"legacy/a/b.go":                   true,
+		"legacy/README.md":                false,
+	} {
+		if got := paths.hidesPath(path); got != hidden {
+			t.Errorf("%s: hidden %v, want %v", path, got, hidden)
+		}
+	}
+}
 
-	var queries []string
+func TestDashboardHidesChangesByPath(t *testing.T) {
+	SetPathFilter([]string{"services/accounts"}, []string{"services/accounts/pkg"})
+	t.Cleanup(func() { SetPathFilter(nil, nil) })
+	files := func(paths ...string) map[string]gerrit.RevisionInfo {
+		f := map[string]gerrit.FileInfo{"/COMMIT_MSG": {}}
+		for _, p := range paths {
+			f[p] = gerrit.FileInfo{}
+		}
+		return map[string]gerrit.RevisionInfo{"r": {Number: 1, Files: f}}
+	}
+
+	var options []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/a/changes/") {
-			queries = append(queries, r.URL.Query().Get("q"))
+			options = r.URL.Query()["o"]
 		}
 		_, _ = w.Write([]byte(")]}'\n[]"))
 	}))
 	defer srv.Close()
 
-	d := newResults(gerrit.NewClient(srv.URL, "u", "p"), "status:merged", &gerrit.AccountInfo{AccountID: 7}, &[]string{})
+	d := newResults(gerrit.NewClient(srv.URL, "u", "p"), "is:open", &gerrit.AccountInfo{AccountID: 7}, &[]string{})
 	d.SetSize(120, 10)
 	d.Init()()
-	if !strings.Contains(ansiRe.ReplaceAllString(d.TitleInfo(), ""), "⊘ accounts/* hidden") {
-		t.Fatalf("title bar should tell projects are hidden: %q", d.TitleInfo())
-	}
-	_, cmd := d.Update(keyRunes("H"))
-	cmd()
-	if !strings.Contains(ansiRe.ReplaceAllString(d.TitleInfo(), ""), "showing hidden projects") {
-		t.Fatalf("title bar should tell hidden projects are shown: %q", d.TitleInfo())
+	if !slices.Contains(options, "CURRENT_FILES") {
+		t.Fatalf("the files are needed to filter, got options %v", options)
 	}
 
-	want := []string{`(status:merged) -(project:"^accounts/.*" -project:"accounts/pkg")`, "status:merged"}
-	if strings.Join(queries, "\n") != strings.Join(want, "\n") {
-		t.Fatalf("got queries:\n%s", strings.Join(queries, "\n"))
+	d.Update(changesLoadedMsg{gen: d.gen, changes: []gerrit.ChangeInfo{
+		{Number: 1, Subject: "accounts only", CurrentRevision: "r", Revisions: files("services/accounts/api/a.go")},
+		{Number: 2, Subject: "accounts and payment", CurrentRevision: "r", Revisions: files("services/accounts/api/a.go", "services/payments/b.go")},
+		{Number: 3, Subject: "accounts pkg", CurrentRevision: "r", Revisions: files("services/accounts/pkg/c.go")},
+	}})
+	numbers := func() []int {
+		var n []int
+		for _, it := range d.items {
+			n = append(n, it.change.Number)
+		}
+		return n
+	}
+	if got := numbers(); !slices.Equal(got, []int{2, 3}) {
+		t.Fatalf("only changes touching hidden paths only should be hidden, listed %v", got)
+	}
+	if info := ansiRe.ReplaceAllString(d.TitleInfo(), ""); !strings.Contains(info, "⊘ 1 in services/accounts hidden") || !strings.Contains(info, "2 changes") {
+		t.Fatalf("title bar should count the hidden changes: %q", info)
+	}
+
+	d.Update(keyRunes("H"))
+	if got := numbers(); !slices.Equal(got, []int{1, 2, 3}) {
+		t.Fatalf("H should show the hidden changes, listed %v", got)
+	}
+	if info := ansiRe.ReplaceAllString(d.TitleInfo(), ""); !strings.Contains(info, "showing filtered changes") {
+		t.Fatalf("title bar should tell filtered changes are shown: %q", info)
 	}
 }

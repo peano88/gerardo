@@ -168,11 +168,12 @@ func TestQueryChangesPages(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	changes, more, err := NewClient(srv.URL, "u", "p").QueryChanges(context.Background(), "status:merged", 50, 2)
+	changes, more, err := NewClient(srv.URL, "u", "p").QueryChanges(context.Background(), "status:merged", 50, 2, true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Get("q") != "status:merged" || got.Get("S") != "50" || got.Get("n") != "2" {
+	if got.Get("q") != "status:merged" || got.Get("S") != "50" || got.Get("n") != "2" ||
+		strings.Join(got["o"], ",") != "LABELS,DETAILED_ACCOUNTS,CURRENT_REVISION,CURRENT_FILES" {
 		t.Fatalf("unexpected query: %v", got)
 	}
 	if len(changes) != 2 || !more {
