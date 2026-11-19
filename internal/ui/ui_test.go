@@ -276,3 +276,24 @@ func TestRenderChangeCollapsesOlderPatchSets(t *testing.T) {
 		t.Fatal("messages should be grouped under their patch set")
 	}
 }
+
+func TestSplitMessage(t *testing.T) {
+	tests := []struct {
+		msg, votes, body string
+	}{
+		{"Patch Set 2: Code-Review+2 Verified-1", "Code-Review+2 Verified-1", ""},
+		{"Patch Set 2: Code-Review+1\n\nlooks good", "Code-Review+1", "looks good"},
+		{"Patch Set 2: -Code-Review\n\n(1 comment)", "-Code-Review", "(1 comment)"},
+		{"Patch Set 2:\n\n(3 comments)", "", "(3 comments)"},
+		{"Patch Set 2: Commit message was updated.", "", "Commit message was updated."},
+		{"Patch Set 2: Restored", "", "Restored"},
+		{"Uploaded patch set 2.", "", "Uploaded patch set 2."},
+		{"Patch Set 1: Code-Review+2", "", "Patch Set 1: Code-Review+2"},
+	}
+	for _, tt := range tests {
+		votes, body := splitMessage(gerrit.ChangeMessageInfo{RevisionNumber: 2, Message: tt.msg})
+		if strings.Join(votes, " ") != tt.votes || body != tt.body {
+			t.Errorf("%q: got votes %q body %q", tt.msg, votes, body)
+		}
+	}
+}

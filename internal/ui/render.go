@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -140,13 +141,54 @@ func renderChange(c *gerrit.ChangeInfo, width int, allPatchSets bool) string {
 		}
 		b.WriteString("  " + sectionStyle.Render("▾ "+g.title()) + count + "\n")
 		for _, m := range g.messages {
-			fmt.Fprintf(&b, "    %s %s\n", titleStyle.Render(m.Author.DisplayName()),
-				dimStyle.Render(m.Date.Local().Format("2006-01-02 15:04")))
-			b.WriteString(wrap.Render(strings.TrimSpace(m.Message)) + "\n")
+			votes, body := splitMessage(m)
+			header := titleStyle.Render(m.Author.DisplayName()) + " " + dimStyle.Render(m.Date.Local().Format("2006-01-02 15:04"))
+			if len(votes) > 0 {
+				header += "  " + renderVotes(votes)
+			}
+			b.WriteString("    " + header + "\n")
+			if body != "" {
+				b.WriteString(wrap.Render(body) + "\n")
+			}
 		}
 	}
 
 	return b.String()
+}
+
+// voteToken matches a vote such as "Code-Review+2", or a removed one such as "-Verified".
+var voteToken = regexp.MustCompile(`^(?:-[A-Za-z][\w-]*|[A-Za-z][\w-]*([+-])\d+)$`)
+
+// splitMessage drops the "Patch Set N:" prefix Gerrit puts on messages,
+// returning the votes that follow it on the same line separately.
+func splitMessage(m gerrit.ChangeMessageInfo) (votes []string, body string) {
+	msg := strings.TrimSpace(m.Message)
+	rest, ok := strings.CutPrefix(msg, fmt.Sprintf("Patch Set %d:", m.RevisionNumber))
+	if !ok {
+		return nil, msg
+	}
+	first, after, _ := strings.Cut(rest, "\n")
+	tokens := strings.Fields(first)
+	if len(tokens) == 0 || !slices.ContainsFunc(tokens, func(t string) bool { return !voteToken.MatchString(t) }) {
+		return tokens, strings.TrimSpace(after)
+	}
+	return nil, strings.TrimSpace(rest)
+}
+
+// renderVotes colours votes by their sign and strikes out removed ones.
+func renderVotes(votes []string) string {
+	out := make([]string, len(votes))
+	for i, v := range votes {
+		switch voteToken.FindStringSubmatch(v)[1] {
+		case "+":
+			out[i] = addStyle.Render(v)
+		case "-":
+			out[i] = delStyle.Render(v)
+		default:
+			out[i] = dimStyle.Strikethrough(true).Render(strings.TrimPrefix(v, "-"))
+		}
+	}
+	return strings.Join(out, " ")
 }
 
 type messageGroup struct {
