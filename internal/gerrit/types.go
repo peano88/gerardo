@@ -153,6 +153,8 @@ type ChangeInfo struct {
 	CurrentRevision        string                  `json:"current_revision"`
 	Revisions              map[string]RevisionInfo `json:"revisions"`
 	Messages               []ChangeMessageInfo     `json:"messages"`
+	// MoreChanges is set on the last change of a query page when more match.
+	MoreChanges bool `json:"_more_changes"`
 	// AttentionSet holds the accounts expected to act next, keyed by account ID.
 	AttentionSet map[string]AttentionSetInfo `json:"attention_set"`
 }

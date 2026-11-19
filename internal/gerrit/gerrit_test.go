@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -154,5 +155,45 @@ func TestGetChange(t *testing.T) {
 
 	if _, err := NewClient(srv.URL, "alice", "wrong").GetChange(context.Background(), "42"); err == nil {
 		t.Fatal("expected an error with wrong credentials")
+	}
+}
+
+func TestQueryChangesPages(t *testing.T) {
+	var got url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.URL.Query()
+		_, _ = w.Write([]byte(")]}'\n" + `[{"_number": 1}, {"_number": 2, "_more_changes": true}]`))
+	}))
+	defer srv.Close()
+
+	changes, more, err := NewClient(srv.URL, "u", "p").QueryChanges(context.Background(), "status:merged", 50, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Get("q") != "status:merged" || got.Get("S") != "50" || got.Get("n") != "2" {
+		t.Fatalf("unexpected query: %v", got)
+	}
+	if len(changes) != 2 || !more {
+		t.Fatalf("got %d changes, more %v", len(changes), more)
+	}
+}
+
+func TestSuggestAccounts(t *testing.T) {
+	var got url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.URL.Query()
+		_, _ = w.Write([]byte(")]}'\n" + `[{"_account_id": 8, "name": "Bob", "username": "bob"}]`))
+	}))
+	defer srv.Close()
+
+	accounts, err := NewClient(srv.URL, "u", "p").SuggestAccounts(context.Background(), "bo", 6)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := got["suggest"]; !ok || got.Get("q") != "bo" || got.Get("n") != "6" {
+		t.Fatalf("unexpected query: %v", got)
+	}
+	if len(accounts) != 1 || accounts[0].Username != "bob" {
+		t.Fatalf("unexpected accounts: %+v", accounts)
 	}
 }

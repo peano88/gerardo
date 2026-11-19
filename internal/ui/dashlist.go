@@ -92,20 +92,27 @@ func (d *dashboard) listHeight() int {
 }
 
 // scroll keeps the cursor visible, with the header of its section when it
-// is the first change of it.
+// is the first change of it, and the more row when it is the last.
 func (d *dashboard) scroll() {
 	h := d.listHeight()
-	top := d.cursor
+	rows := len(d.items)
+	if d.more {
+		rows++
+	}
+	top, bottom := d.cursor, d.cursor
 	if top > 0 && d.items[top-1].change == nil {
 		top--
+	}
+	if d.more && bottom == len(d.items)-1 {
+		bottom++
 	}
 	if top < d.offset {
 		d.offset = top
 	}
-	if d.cursor >= d.offset+h {
-		d.offset = d.cursor - h + 1
+	if bottom >= d.offset+h {
+		d.offset = bottom - h + 1
 	}
-	d.offset = min(max(d.offset, 0), max(len(d.items)-h, 0))
+	d.offset = min(max(d.offset, 0), max(rows-h, 0))
 }
 
 func (d *dashboard) listView(width int) string {
@@ -114,12 +121,20 @@ func (d *dashboard) listView(width int) string {
 	if len(d.items) == 0 && !d.loading {
 		lines = append(lines, strings.Repeat(" ", listGutter)+dimStyle.Render("No changes match "+d.query))
 	}
-	for i := d.offset; i < min(len(d.items), d.offset+d.listHeight()); i++ {
+	end := min(len(d.items), d.offset+d.listHeight())
+	for i := d.offset; i < end; i++ {
 		if d.items[i].change == nil {
 			lines = append(lines, sectionLine(d.items[i].header, width))
 		} else {
 			lines = append(lines, changeLine(d.items[i].change, cols, i == d.cursor, d.needsAttention(d.items[i].change)))
 		}
+	}
+	if d.more && end == len(d.items) && end-d.offset < d.listHeight() {
+		more := "↓ more changes"
+		if d.loadingMore {
+			more = "loading more…"
+		}
+		lines = append(lines, strings.Repeat(" ", listGutter)+dimStyle.Render(more))
 	}
 	return lipgloss.NewStyle().Width(width).Height(d.height).Render(strings.Join(lines, "\n"))
 }
@@ -142,7 +157,11 @@ func (d *dashboard) TitleInfo() string {
 		if waiting > 0 {
 			info = append(info, attentionDot+" "+unresolvedSt.Render(fmt.Sprintf("%d waiting on you", waiting)))
 		}
-		info = append(info, dimStyle.Render(fmt.Sprintf("%d changes", len(d.changes))))
+		count := fmt.Sprintf("%d changes", len(d.changes))
+		if d.more {
+			count = fmt.Sprintf("%d+ changes", len(d.changes))
+		}
+		info = append(info, dimStyle.Render(count))
 	}
 	return strings.Join(info, dimStyle.Render("  ·  "))
 }

@@ -37,18 +37,32 @@ func (c *Client) BaseURL() string {
 	return c.baseURL
 }
 
-// QueryChanges searches changes using the Gerrit query syntax.
-func (c *Client) QueryChanges(ctx context.Context, query string, limit int) ([]ChangeInfo, error) {
+// QueryChanges searches changes using the Gerrit query syntax, returning up
+// to limit of them from start on, and whether more match.
+func (c *Client) QueryChanges(ctx context.Context, query string, start, limit int) ([]ChangeInfo, bool, error) {
 	v := url.Values{
 		"q": {query},
+		"S": {fmt.Sprint(start)},
 		"n": {fmt.Sprint(limit)},
 		"o": {"LABELS", "DETAILED_ACCOUNTS"},
 	}
 	var changes []ChangeInfo
 	if err := c.get(ctx, "/changes/?"+v.Encode(), &changes); err != nil {
-		return nil, fmt.Errorf("query changes: %w", err)
+		return nil, false, fmt.Errorf("query changes: %w", err)
 	}
-	return changes, nil
+	more := len(changes) > 0 && changes[len(changes)-1].MoreChanges
+	return changes, more, nil
+}
+
+// SuggestAccounts returns up to limit accounts matching a part of a name,
+// email or username.
+func (c *Client) SuggestAccounts(ctx context.Context, query string, limit int) ([]AccountInfo, error) {
+	v := url.Values{"q": {query}, "n": {fmt.Sprint(limit)}}
+	var accounts []AccountInfo
+	if err := c.get(ctx, "/accounts/?suggest&"+v.Encode(), &accounts); err != nil {
+		return nil, fmt.Errorf("suggest accounts: %w", err)
+	}
+	return accounts, nil
 }
 
 // GetChange fetches a change with its current revision, files, votes and messages.

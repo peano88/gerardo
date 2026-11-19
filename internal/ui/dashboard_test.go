@@ -192,3 +192,56 @@ func TestDashboardAttention(t *testing.T) {
 		}
 	}
 }
+
+func TestDashboardLoadsMorePages(t *testing.T) {
+	page := func(from, n int) []gerrit.ChangeInfo {
+		var changes []gerrit.ChangeInfo
+		for i := range n {
+			changes = append(changes, gerrit.ChangeInfo{Number: from + i, Subject: "c"})
+		}
+		return changes
+	}
+	d := newResults(nil, "status:merged", nil, &[]string{})
+	d.SetSize(100, 10)
+	d.Init()
+	d.Update(changesLoadedMsg{gen: d.gen, changes: page(1, pageSize), more: true})
+	if d.loadingMore || !strings.Contains(d.TitleInfo(), "50+ changes") {
+		t.Fatal("first page should not fetch more until the cursor nears the end")
+	}
+
+	d.Update(keyRunes("G"))
+	if !d.loadingMore {
+		t.Fatal("reaching the end should fetch the next page")
+	}
+	if !strings.Contains(d.View(), "loading more…") {
+		t.Fatalf("the list should show the next page loading:\n%s", d.View())
+	}
+
+	// A page from before a reload is dropped.
+	d.Update(changesLoadedMsg{gen: d.gen - 1, start: pageSize, changes: page(999, 1)})
+	if len(d.changes) != pageSize {
+		t.Fatal("stale page should be ignored")
+	}
+	d.Update(changesLoadedMsg{gen: d.gen, start: pageSize, changes: page(pageSize+1, 3)})
+	if len(d.changes) != pageSize+3 || d.more || d.loadingMore {
+		t.Fatalf("next page should be appended, got %d changes", len(d.changes))
+	}
+	if n, _ := d.selected(); n != pageSize {
+		t.Fatalf("appending should keep the selection, got %d", n)
+	}
+	if d.items[0].change == nil {
+		t.Fatal("search results should not be grouped")
+	}
+}
+
+func TestResultsGoBack(t *testing.T) {
+	d := newResults(nil, "status:merged", nil, &[]string{})
+	if _, cmd := d.Update(keyRunes("q")); cmd == nil || cmd() != pop() {
+		t.Fatal("q on search results should go back, not quit")
+	}
+	_, cmd := d.Update(keyRunes("/"))
+	push, ok := cmd().(pushMsg)
+	if !ok || push.screen.(*searchScreen).input.Value() != "status:merged" || !push.screen.(*searchScreen).replace {
+		t.Fatal("/ on results should edit the current query in place")
+	}
+}

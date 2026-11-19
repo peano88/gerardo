@@ -20,13 +20,22 @@ const (
 	previewMinWidth = 140
 	// previewDelay lets the cursor settle before a preview is fetched.
 	previewDelay = 150 * time.Millisecond
+	// pageSize is the number of changes fetched per query page.
+	pageSize = 50
+	// prefetchMargin is how close to the end the cursor gets before the
+	// next page is fetched.
+	prefetchMargin = 10
 )
 
 var previewBorder = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderLeft(true).
 	BorderForeground(lipgloss.Color("8")).PaddingLeft(1)
 
 type changesLoadedMsg struct {
+	// gen is the load generation the page belongs to, start its offset.
+	gen     int
+	start   int
 	changes []gerrit.ChangeInfo
+	more    bool
 	self    *gerrit.AccountInfo
 	err     error
 }
@@ -76,9 +85,13 @@ type previewLoadedMsg struct {
 	err    error
 }
 
+// dashboard lists the changes of a query. The root dashboard groups the
+// user's own changes first; search results are listed as they come.
 type dashboard struct {
 	client  *gerrit.Client
 	query   string
+	root    bool
+	recent  *[]string
 	changes []gerrit.ChangeInfo
 	items   []dashItem
 	cursor  int
@@ -86,9 +99,13 @@ type dashboard struct {
 	self    *gerrit.AccountInfo
 	loading bool
 	err     error
-	width   int
-	height  int
-	notice  notice
+	// more is set when further pages match; gen tells stale pages apart.
+	more        bool
+	loadingMore bool
+	gen         int
+	width       int
+	height      int
+	notice      notice
 
 	showPreview bool
 	preview     viewport.Model
@@ -99,18 +116,42 @@ type dashboard struct {
 }
 
 func newDashboard(client *gerrit.Client, query string) *dashboard {
+	d := newResults(client, query, nil, &[]string{})
+	d.root = true
+	return d
+}
+
+// newResults lists the changes matching a search.
+func newResults(client *gerrit.Client, query string, self *gerrit.AccountInfo, recent *[]string) *dashboard {
 	return &dashboard{
 		client:      client,
 		query:       query,
+		recent:      recent,
+		self:        self,
 		showPreview: true,
 		preview:     viewport.New(0, 0),
 		previews:    map[int]*gerrit.ChangeInfo{},
 	}
 }
 
+// Init loads the first page again, as large as what is already listed.
 func (d *dashboard) Init() tea.Cmd {
-	d.loading = true
-	client, query, self := d.client, d.query, d.self
+	d.loading, d.loadingMore = true, false
+	d.gen++
+	return d.fetch(0, max(pageSize, len(d.changes)))
+}
+
+// maybeLoadMore fetches the next page once the cursor nears the end.
+func (d *dashboard) maybeLoadMore() tea.Cmd {
+	if !d.more || d.loading || d.loadingMore || d.cursor < len(d.items)-prefetchMargin {
+		return nil
+	}
+	d.loadingMore = true
+	return d.fetch(len(d.changes), pageSize)
+}
+
+func (d *dashboard) fetch(start, limit int) tea.Cmd {
+	client, query, self, gen := d.client, d.query, d.self, d.gen
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
@@ -118,14 +159,15 @@ func (d *dashboard) Init() tea.Cmd {
 		var (
 			wg                sync.WaitGroup
 			changes           []gerrit.ChangeInfo
+			more              bool
 			queryErr, selfErr error
 		)
-		wg.Go(func() { changes, queryErr = client.QueryChanges(ctx, query, 100) })
+		wg.Go(func() { changes, more, queryErr = client.QueryChanges(ctx, query, start, limit) })
 		if self == nil {
 			wg.Go(func() { self, selfErr = client.Self(ctx) })
 		}
 		wg.Wait()
-		return changesLoadedMsg{changes: changes, self: self, err: errors.Join(queryErr, selfErr)}
+		return changesLoadedMsg{gen: gen, start: start, changes: changes, more: more, self: self, err: errors.Join(queryErr, selfErr)}
 	}
 }
 
@@ -136,22 +178,31 @@ func (d *dashboard) Update(msg tea.Msg) (screen, tea.Cmd) {
 		return d, nil
 
 	case changesLoadedMsg:
-		d.loading, d.err = false, msg.err
 		if msg.self != nil {
 			d.self = msg.self
 		}
-		if msg.changes != nil || msg.err == nil {
-			selfID := 0
-			if d.self != nil {
-				selfID = d.self.AccountID
-			}
-			prev, _ := d.selected()
-			d.changes = msg.changes
-			d.items = groupChanges(d.changes, selfID)
-			d.selectNumber(prev)
-			d.previewFor = 0
+		if msg.gen != d.gen {
+			return d, nil
 		}
-		return d, d.schedulePreview()
+		d.err = msg.err
+		if msg.start == 0 {
+			d.loading = false
+		} else {
+			d.loadingMore = false
+		}
+		if msg.err == nil || msg.changes != nil {
+			prev, _ := d.selected()
+			if msg.start == 0 {
+				d.changes = msg.changes
+				d.previewFor = 0
+			} else {
+				d.changes = append(d.changes, msg.changes...)
+			}
+			d.more = msg.more
+			d.items = groupChanges(d.changes, d.groupBy())
+			d.selectNumber(prev)
+		}
+		return d, tea.Batch(d.schedulePreview(), d.maybeLoadMore())
 
 	case previewTickMsg:
 		if msg.seq != d.previewSeq {
@@ -181,7 +232,21 @@ func (d *dashboard) Update(msg tea.Msg) (screen, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q":
-			return d, tea.Quit
+			if d.root {
+				return d, tea.Quit
+			}
+			return d, pop
+		case "esc", "backspace":
+			if !d.root {
+				return d, pop
+			}
+			return d, nil
+		case "/":
+			prefill := ""
+			if !d.root {
+				prefill = d.query
+			}
+			return d, push(newSearchScreen(d.client, prefill, d.self, d.recent, !d.root))
 		case "r":
 			clear(d.previews)
 			return d, d.Init()
@@ -236,7 +301,15 @@ func (d *dashboard) Update(msg tea.Msg) (screen, tea.Cmd) {
 
 func (d *dashboard) moveBy(delta int) tea.Cmd {
 	d.move(delta)
-	return d.schedulePreview()
+	return tea.Batch(d.schedulePreview(), d.maybeLoadMore())
+}
+
+// groupBy is the account whose changes are grouped first, if any.
+func (d *dashboard) groupBy() int {
+	if !d.root || d.self == nil {
+		return 0
+	}
+	return d.self.AccountID
 }
 
 func (d *dashboard) selected() (int, bool) {
@@ -288,13 +361,22 @@ func (d *dashboard) View() string {
 }
 
 func (d *dashboard) Title() string {
-	return "Dashboard"
+	if d.root {
+		return "Dashboard"
+	}
+	return "Search"
 }
 
 func (d *dashboard) Status() string {
-	hints := []string{"enter", "open", "y", "copy number", "r", "reload", "q", "quit"}
+	hints := []string{"enter", "open", "/", "search", "y", "copy number"}
 	if d.width >= previewMinWidth {
-		hints = []string{"enter", "open", "y", "copy number", "J/K", "scroll preview", "P", "toggle preview", "r", "reload", "q", "quit"}
+		hints = append(hints, "J/K", "scroll preview", "P", "toggle preview")
+	}
+	hints = append(hints, "r", "reload")
+	if d.root {
+		hints = append(hints, "q", "quit")
+	} else {
+		hints = append(hints, "esc", "back")
 	}
 	return d.notice.status(d.loading, d.err, keyHints(hints...))
 }
