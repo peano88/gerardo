@@ -272,7 +272,7 @@ func (d *dashboard) renderPreview() {
 	case d.previewErr != nil:
 		d.preview.SetContent(errStyle.Render(d.previewErr.Error()))
 	case ok:
-		d.preview.SetContent(renderChange(c, d.preview.Width))
+		d.preview.SetContent(renderChange(c, d.preview.Width, false))
 	default:
 		d.preview.SetContent(dimStyle.Render("loading…"))
 	}

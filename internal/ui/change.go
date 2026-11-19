@@ -25,6 +25,8 @@ type changeScreen struct {
 	loading  bool
 	err      error
 	notice   notice
+
+	allPatchSets bool
 }
 
 func newChangeScreen(client *gerrit.Client, number int) *changeScreen {
@@ -71,6 +73,10 @@ func (s *changeScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
 			return s, s.Init()
 		case "y":
 			return s, copyNumber(s.number)
+		case "m":
+			s.allPatchSets = !s.allPatchSets
+			s.render()
+			return s, nil
 		case "v":
 			if s.change == nil {
 				return s, nil
@@ -98,7 +104,14 @@ func (s *changeScreen) View() string {
 
 func (s *changeScreen) Status() string {
 	return s.notice.status(s.loading, s.err, dimStyle.Render(fmt.Sprintf("%3.0f%%", s.viewport.ScrollPercent()*100))+"   "+
-		keyHints("↑/↓", "scroll", "f", "files", "v", "vote", "y", "copy number", "r", "reload", "esc", "back"))
+		keyHints("↑/↓", "scroll", "f", "files", "v", "vote", "m", s.messagesHint(), "y", "copy number", "r", "reload", "esc", "back"))
+}
+
+func (s *changeScreen) messagesHint() string {
+	if s.allPatchSets {
+		return "latest messages"
+	}
+	return "all messages"
 }
 
 func (s *changeScreen) SetSize(width, height int) {
@@ -108,6 +121,6 @@ func (s *changeScreen) SetSize(width, height int) {
 
 func (s *changeScreen) render() {
 	if s.change != nil {
-		s.viewport.SetContent(renderChange(s.change, s.viewport.Width))
+		s.viewport.SetContent(renderChange(s.change, s.viewport.Width, s.allPatchSets))
 	}
 }

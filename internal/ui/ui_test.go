@@ -247,3 +247,32 @@ func TestAppNavigation(t *testing.T) {
 		t.Fatal("popping the last screen should quit")
 	}
 }
+
+func TestRenderChangeCollapsesOlderPatchSets(t *testing.T) {
+	alice, bob := &gerrit.AccountInfo{Name: "Alice"}, &gerrit.AccountInfo{Name: "Bob"}
+	c := &gerrit.ChangeInfo{Number: 1, Subject: "s", Messages: []gerrit.ChangeMessageInfo{
+		{Author: alice, RevisionNumber: 1, Message: "Uploaded patch set 1."},
+		{Author: bob, RevisionNumber: 1, Message: "Patch Set 1: Code-Review-1\n\nold remark"},
+		{Author: alice, RevisionNumber: 2, Message: "Uploaded patch set 2."},
+		{Author: bob, RevisionNumber: 1, Message: "late reply on the first patch set"},
+		{Author: bob, RevisionNumber: 2, Message: "Patch Set 2: Code-Review+2"},
+	}}
+
+	got := strings.Join(plainLines(renderChange(c, 80, false)), "\n")
+	switch {
+	case !strings.Contains(got, "▸ Patch Set 1 · 3 messages · Alice, Bob"):
+		t.Fatal("older patch set should be summarized")
+	case strings.Contains(got, "old remark") || strings.Contains(got, "late reply"):
+		t.Fatal("older patch set messages should be hidden")
+	case !strings.Contains(got, "▾ Patch Set 2 · 2 messages") || !strings.Contains(got, "Code-Review+2"):
+		t.Fatal("latest patch set should be expanded")
+	}
+
+	all := strings.Join(plainLines(renderChange(c, 80, true)), "\n")
+	if !strings.Contains(all, "▾ Patch Set 1 · 3 messages") || !strings.Contains(all, "late reply") {
+		t.Fatalf("every patch set should be expanded:\n%s", all)
+	}
+	if strings.Index(all, "late reply") > strings.Index(all, "Patch Set 2 ·") {
+		t.Fatal("messages should be grouped under their patch set")
+	}
+}
