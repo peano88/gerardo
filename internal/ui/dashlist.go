@@ -147,6 +147,12 @@ func (d *dashboard) needsAttention(c *gerrit.ChangeInfo) bool {
 // waiting on the user.
 func (d *dashboard) TitleInfo() string {
 	info := []string{dimStyle.Render(d.query)}
+	switch {
+	case d.filtering():
+		info = append(info, dimStyle.Render("⊘ "+summarize(HiddenProjects, 2)+" hidden"))
+	case len(HiddenProjects) > 0:
+		info = append(info, unresolvedSt.Render("showing hidden projects"))
+	}
 	if !d.loading {
 		waiting := 0
 		for i := range d.changes {
@@ -252,4 +258,12 @@ func voteCell(l gerrit.LabelInfo) (string, lipgloss.Style) {
 	default:
 		return "", dimStyle
 	}
+}
+
+// summarize lists the first n items, and how many others there are.
+func summarize(items []string, n int) string {
+	if len(items) <= n {
+		return strings.Join(items, ", ")
+	}
+	return fmt.Sprintf("%s +%d", strings.Join(items[:n], ", "), len(items)-n)
 }

@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -14,6 +15,12 @@ url = "https://review.example.com"  # the server
 query = "status:open #tag"
 side_by_side = true
 page_size = 25
+hidden_projects = ["accounts/*", "legacy/*"]  # not mine
+visible_projects = [
+  "accounts/pkg",   # still mine
+  # "accounts/old",
+  "accounts/billing",
+]
 `
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
@@ -24,14 +31,16 @@ page_size = 25
 	}
 	want := Default()
 	want.URL, want.Query, want.SideBySide, want.PageSize = "https://review.example.com", "status:open #tag", true, 25
-	if c != want {
+	want.HiddenProjects = []string{"accounts/*", "legacy/*"}
+	want.VisibleProjects = []string{"accounts/pkg", "accounts/billing"}
+	if !reflect.DeepEqual(c, want) {
 		t.Fatalf("got %+v, want %+v", c, want)
 	}
 }
 
 func TestLoadMissingFile(t *testing.T) {
 	c, err := Load(filepath.Join(t.TempDir(), "none.toml"))
-	if err != nil || c != Default() {
+	if err != nil || !reflect.DeepEqual(c, Default()) {
 		t.Fatalf("a missing file should give the defaults, got %+v, %v", c, err)
 	}
 }
@@ -43,6 +52,9 @@ func TestLoadErrors(t *testing.T) {
 		"side_by_side = maybe",
 		"page_size = 0",
 		"just words",
+		`hidden_projects = "accounts/*"`,
+		`hidden_projects = [accounts/*]`,
+		"hidden_projects = [\n\"a\",",
 	} {
 		_, err := parseString(content)
 		if err == nil || !strings.Contains(err.Error(), "line 1") {

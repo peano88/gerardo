@@ -1,13 +1,19 @@
 // Package config reads the gerrit-tui configuration file.
 //
 // The file holds `key = value` lines, a subset of TOML: strings are quoted,
-// booleans and integers are bare, and # starts a comment.
+// booleans and integers are bare, lists of strings are in brackets and may
+// span lines, and # starts a comment.
 //
 //	url = "https://review.example.com"
 //	query = "is:open (owner:self OR reviewer:self)"
 //	style = "catppuccin-mocha"
 //	side_by_side = true
 //	page_size = 50
+//	hidden_projects = ["accounts/*"]
+//	visible_projects = [
+//	  "accounts/pkg",
+//	  "accounts/billing",
+//	]
 package config
 
 import (
@@ -28,6 +34,10 @@ type Config struct {
 	Style      string
 	SideBySide bool
 	PageSize   int
+	// HiddenProjects are glob patterns of projects left out of the change
+	// lists, unless they match VisibleProjects.
+	HiddenProjects  []string
+	VisibleProjects []string
 }
 
 // Default returns the settings used when the file does not set them.
@@ -81,9 +91,20 @@ func parse(r io.Reader, c *Config) error {
 		if !ok {
 			return fmt.Errorf("line %d: expected key = value", n)
 		}
+		start := n
 		key, value = strings.TrimSpace(key), stripComment(strings.TrimSpace(value))
+		// A list continues until its closing bracket.
+		for strings.HasPrefix(value, "[") && !strings.HasSuffix(value, "]") {
+			if !sc.Scan() {
+				return fmt.Errorf("line %d: %s: unterminated list", start, key)
+			}
+			n++
+			if next := stripComment(strings.TrimSpace(sc.Text())); next != "" {
+				value += " " + next
+			}
+		}
 		if err := c.set(key, value); err != nil {
-			return fmt.Errorf("line %d: %s: %w", n, key, err)
+			return fmt.Errorf("line %d: %s: %w", start, key, err)
 		}
 	}
 	return sc.Err()
@@ -118,10 +139,34 @@ func (c *Config) set(key, value string) error {
 		if err == nil && (c.PageSize < 1 || c.PageSize > 500) {
 			err = errors.New("must be between 1 and 500")
 		}
+	case "hidden_projects":
+		c.HiddenProjects, err = stringList(value)
+	case "visible_projects":
+		c.VisibleProjects, err = stringList(value)
 	default:
 		err = errors.New("unknown setting")
 	}
 	return err
+}
+
+// stringList parses a list of quoted strings, such as ["a", "b",].
+func stringList(value string) ([]string, error) {
+	if !strings.HasPrefix(value, "[") || !strings.HasSuffix(value, "]") {
+		return nil, errors.New("expected a list of quoted strings")
+	}
+	var list []string
+	for _, item := range strings.Split(value[1:len(value)-1], ",") {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			continue
+		}
+		s, err := unquote(item)
+		if err != nil || s == "" {
+			return nil, errors.New("expected a list of quoted strings")
+		}
+		list = append(list, s)
+	}
+	return list, nil
 }
 
 func unquote(value string) (string, error) {

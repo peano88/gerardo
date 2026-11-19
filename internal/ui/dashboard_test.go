@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"slices"
 	"strings"
 	"testing"
@@ -243,5 +245,36 @@ func TestResultsGoBack(t *testing.T) {
 	push, ok := cmd().(pushMsg)
 	if !ok || push.screen.(*searchScreen).input.Value() != "status:merged" || !push.screen.(*searchScreen).replace {
 		t.Fatal("/ on results should edit the current query in place")
+	}
+}
+
+func TestDashboardHidesProjects(t *testing.T) {
+	HiddenProjects, VisibleProjects = []string{"accounts/*"}, []string{"accounts/pkg"}
+	t.Cleanup(func() { HiddenProjects, VisibleProjects = nil, nil })
+
+	var queries []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/a/changes/") {
+			queries = append(queries, r.URL.Query().Get("q"))
+		}
+		_, _ = w.Write([]byte(")]}'\n[]"))
+	}))
+	defer srv.Close()
+
+	d := newResults(gerrit.NewClient(srv.URL, "u", "p"), "status:merged", &gerrit.AccountInfo{AccountID: 7}, &[]string{})
+	d.SetSize(120, 10)
+	d.Init()()
+	if !strings.Contains(ansiRe.ReplaceAllString(d.TitleInfo(), ""), "⊘ accounts/* hidden") {
+		t.Fatalf("title bar should tell projects are hidden: %q", d.TitleInfo())
+	}
+	_, cmd := d.Update(keyRunes("H"))
+	cmd()
+	if !strings.Contains(ansiRe.ReplaceAllString(d.TitleInfo(), ""), "showing hidden projects") {
+		t.Fatalf("title bar should tell hidden projects are shown: %q", d.TitleInfo())
+	}
+
+	want := []string{`(status:merged) -(project:"^accounts/.*" -project:"accounts/pkg")`, "status:merged"}
+	if strings.Join(queries, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("got queries:\n%s", strings.Join(queries, "\n"))
 	}
 }

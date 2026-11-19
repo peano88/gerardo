@@ -43,6 +43,7 @@ func run() error {
 	}
 	flag.Parse()
 	ui.PageSize = cfg.PageSize
+	ui.HiddenProjects, ui.VisibleProjects = cfg.HiddenProjects, cfg.VisibleProjects
 
 	user, password, err := credentials(*baseURL)
 	if err != nil {

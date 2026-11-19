@@ -97,6 +97,8 @@ type dashboard struct {
 	self    *gerrit.AccountInfo
 	loading bool
 	err     error
+	// showHidden lists the changes of HiddenProjects too.
+	showHidden bool
 	// more is set when further pages match; gen tells stale pages apart.
 	more        bool
 	loadingMore bool
@@ -148,8 +150,16 @@ func (d *dashboard) maybeLoadMore() tea.Cmd {
 	return d.fetch(len(d.changes), PageSize)
 }
 
+// filtering reports whether changes of hidden projects are left out.
+func (d *dashboard) filtering() bool {
+	return len(HiddenProjects) > 0 && !d.showHidden
+}
+
 func (d *dashboard) fetch(start, limit int) tea.Cmd {
 	client, query, self, gen := d.client, d.query, d.self, d.gen
+	if d.filtering() {
+		query = gerrit.ExcludeProjects(query, HiddenProjects, VisibleProjects)
+	}
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
@@ -247,6 +257,13 @@ func (d *dashboard) Update(msg tea.Msg) (screen, tea.Cmd) {
 			return d, push(newSearchScreen(d.client, prefill, d.self, d.recent, !d.root))
 		case "r":
 			clear(d.previews)
+			return d, d.Init()
+		case "H":
+			if len(HiddenProjects) == 0 {
+				d.notice = notice{text: "set hidden_projects in the config file to hide projects"}
+				return d, nil
+			}
+			d.showHidden = !d.showHidden
 			return d, d.Init()
 		case "P":
 			d.showPreview = !d.showPreview
@@ -369,6 +386,13 @@ func (d *dashboard) Status() string {
 	hints := []string{"enter", "open", "/", "search", "y", "copy number"}
 	if d.width >= previewMinWidth {
 		hints = append(hints, "J/K", "scroll preview", "P", "toggle preview")
+	}
+	if len(HiddenProjects) > 0 {
+		if d.showHidden {
+			hints = append(hints, "H", "hide projects")
+		} else {
+			hints = append(hints, "H", "show hidden")
+		}
 	}
 	hints = append(hints, "r", "reload")
 	if d.root {
