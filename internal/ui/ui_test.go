@@ -308,10 +308,12 @@ func TestRenderChangeShowsMessageComments(t *testing.T) {
 	comments := map[string][]gerrit.CommentInfo{"m1": {
 		{Path: gerrit.PatchSetLevel, Message: "overall fine"},
 		{Path: "main.go", Line: 42, Message: "rename this", Unresolved: true},
+		{Path: "main.go", Line: 50, InReplyTo: "p", Message: "done"},
 	}}
+	byID := map[string]gerrit.CommentInfo{"p": {Author: &gerrit.AccountInfo{Name: "Bob"}, Message: "why is this here?\nmore"}}
 
-	got := strings.Join(plainLines(renderChange(c, 80, changeView{comments: comments})), "\n")
-	for _, want := range []string{"Patch set\n", "│ overall fine", "main.go:42 ● unresolved", "│ rename this"} {
+	got := strings.Join(plainLines(renderChange(c, 80, changeView{comments: comments, commentsByID: byID})), "\n")
+	for _, want := range []string{"Patch set\n", "│ overall fine", "main.go:42 ● unresolved", "│ rename this", "│ ↳ Bob: why is this here?\n", "│ done"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in:\n%s", want, got)
 		}

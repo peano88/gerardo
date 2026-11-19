@@ -123,6 +123,8 @@ type changeView struct {
 	allPatchSets bool
 	// comments maps message IDs to the inline comments published with them.
 	comments map[string][]gerrit.CommentInfo
+	// commentsByID finds the comments replies answer.
+	commentsByID map[string]gerrit.CommentInfo
 }
 
 func renderChange(c *gerrit.ChangeInfo, width int, view changeView) string {
@@ -224,7 +226,7 @@ func renderChange(c *gerrit.ChangeInfo, width int, view changeView) string {
 				b.WriteString(wrap.Render(body) + "\n")
 			}
 			for _, cm := range comments {
-				b.WriteString(renderMessageComment(cm, width))
+				b.WriteString(renderMessageComment(cm, view.commentsByID, width))
 			}
 		}
 	}
@@ -240,7 +242,7 @@ var commentBar = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), false, fals
 
 // renderMessageComment shows an inline comment under its message: where it
 // is, then its text.
-func renderMessageComment(c gerrit.CommentInfo, width int) string {
+func renderMessageComment(c gerrit.CommentInfo, byID map[string]gerrit.CommentInfo, width int) string {
 	var where string
 	switch c.Path {
 	case gerrit.PatchSetLevel:
@@ -257,7 +259,14 @@ func renderMessageComment(c gerrit.CommentInfo, width int) string {
 	if c.Unresolved {
 		location += " " + unresolvedSt.Render("● unresolved")
 	}
-	text := commentBar.Width(max(width-8, 20)).Render(strings.TrimSpace(c.Message))
+	textWidth := max(width-8, 20)
+	text := strings.TrimSpace(c.Message)
+	if parent, ok := byID[c.InReplyTo]; ok {
+		first, _, _ := strings.Cut(strings.TrimSpace(parent.Message), "\n")
+		quote := ansi.Truncate("↳ "+parent.Author.DisplayName()+": "+first, textWidth-2, "…")
+		text = dimStyle.Italic(true).Render(quote) + "\n" + text
+	}
+	text = commentBar.Width(textWidth).Render(text)
 	return lipgloss.NewStyle().PaddingLeft(6).Render(location+"\n"+text) + "\n"
 }
 

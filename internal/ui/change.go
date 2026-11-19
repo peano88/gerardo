@@ -31,6 +31,7 @@ type changeScreen struct {
 
 	// comments maps message IDs to the inline comments published with them.
 	comments     map[string][]gerrit.CommentInfo
+	commentsByID map[string]gerrit.CommentInfo
 	allPatchSets bool
 }
 
@@ -71,6 +72,12 @@ func (s *changeScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
 		if msg.change != nil {
 			s.change = msg.change
 			s.comments = gerrit.MessageComments(msg.change.Messages, msg.comments)
+			s.commentsByID = map[string]gerrit.CommentInfo{}
+			for _, list := range msg.comments {
+				for _, c := range list {
+					s.commentsByID[c.ID] = c
+				}
+			}
 			s.render()
 			s.viewport.GotoTop()
 		}
@@ -139,6 +146,6 @@ func (s *changeScreen) SetSize(width, height int) {
 
 func (s *changeScreen) render() {
 	if s.change != nil {
-		s.viewport.SetContent(renderChange(s.change, s.viewport.Width, changeView{allPatchSets: s.allPatchSets, comments: s.comments}))
+		s.viewport.SetContent(renderChange(s.change, s.viewport.Width, changeView{allPatchSets: s.allPatchSets, comments: s.comments, commentsByID: s.commentsByID}))
 	}
 }
