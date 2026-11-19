@@ -152,6 +152,20 @@ type ChangeInfo struct {
 	CurrentRevision        string                  `json:"current_revision"`
 	Revisions              map[string]RevisionInfo `json:"revisions"`
 	Messages               []ChangeMessageInfo     `json:"messages"`
+	// AttentionSet holds the accounts expected to act next, keyed by account ID.
+	AttentionSet map[string]AttentionSetInfo `json:"attention_set"`
+}
+
+// AttentionSetInfo is an account in the attention set of a change.
+type AttentionSetInfo struct {
+	Account AccountInfo `json:"account"`
+	Reason  string      `json:"reason"`
+}
+
+// NeedsAttention reports whether accountID is in the attention set.
+func (c *ChangeInfo) NeedsAttention(accountID int) bool {
+	_, ok := c.AttentionSet[strconv.Itoa(accountID)]
+	return ok
 }
 
 // SortedPaths returns the file paths of the revision in a stable order.

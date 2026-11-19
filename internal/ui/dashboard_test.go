@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -164,5 +165,30 @@ func TestDashboardEmpty(t *testing.T) {
 	d.Update(changesLoadedMsg{})
 	if !strings.Contains(d.View(), "No changes match is:open") {
 		t.Fatalf("empty dashboard should say so:\n%s", d.View())
+	}
+}
+
+func TestDashboardAttention(t *testing.T) {
+	me := gerrit.AccountInfo{AccountID: 7}
+	d := newDashboard(nil, "is:open")
+	d.SetSize(120, 10)
+	d.Update(changesLoadedMsg{self: &me, changes: []gerrit.ChangeInfo{
+		{Number: 1, Subject: "waiting", Owner: me, UnresolvedCommentCount: 4,
+			AttentionSet: map[string]gerrit.AttentionSetInfo{"7": {Account: me}}},
+		{Number: 2, Subject: "idle", Owner: me},
+	}})
+	lines := plainLines(d.View())
+	if !strings.Contains(lines[0], "1 waiting on you") || !strings.Contains(lines[0], "2 changes") {
+		t.Fatalf("title bar should count the changes waiting on the user: %q", lines[0])
+	}
+	for _, l := range lines {
+		switch {
+		case strings.Contains(l, "1  waiting"):
+			if !strings.HasPrefix(l, "▌●") || !slices.Contains(strings.Fields(l), "4") {
+				t.Fatalf("change in the attention set should be marked with its unresolved count: %q", l)
+			}
+		case strings.Contains(l, "idle") && strings.Contains(l, "●"):
+			t.Fatalf("change not waiting on the user should not be marked: %q", l)
+		}
 	}
 }

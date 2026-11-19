@@ -280,18 +280,19 @@ func (d *dashboard) renderPreview() {
 }
 
 func (d *dashboard) View() string {
-	if !d.split() {
-		return d.listView(d.width)
+	body := d.listView(d.width)
+	if d.split() {
+		body = lipgloss.JoinHorizontal(lipgloss.Top, d.listView(d.listWidth()), previewBorder.Height(d.bodyHeight()).Render(d.preview.View()))
 	}
-	return lipgloss.JoinHorizontal(lipgloss.Top, d.listView(d.listWidth()), previewBorder.Height(d.height).Render(d.preview.View()))
+	return d.titleBar() + "\n" + body
 }
 
 func (d *dashboard) Status() string {
-	help := "enter open · y copy number · r reload · q quit"
+	hints := []string{"enter", "open", "y", "copy number", "r", "reload", "q", "quit"}
 	if d.width >= previewMinWidth {
-		help = "enter open · y copy number · J/K scroll preview · P toggle preview · r reload · q quit"
+		hints = []string{"enter", "open", "y", "copy number", "J/K", "scroll preview", "P", "toggle preview", "r", "reload", "q", "quit"}
 	}
-	return d.notice.status(d.loading, d.err, fmt.Sprintf("%d changes · %s · %s", len(d.changes), d.query, help))
+	return d.notice.status(d.loading, d.err, keyHints(hints...))
 }
 
 func (d *dashboard) SetSize(width, height int) {
@@ -308,7 +309,7 @@ func (d *dashboard) listWidth() int {
 
 func (d *dashboard) layout() {
 	if d.split() {
-		d.preview.Width, d.preview.Height = d.width-d.listWidth()-2, d.height
+		d.preview.Width, d.preview.Height = d.width-d.listWidth()-2, d.bodyHeight()
 		if d.previewFor != 0 {
 			d.renderPreview()
 		}

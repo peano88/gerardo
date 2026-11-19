@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -18,23 +20,27 @@ var (
 	numberStyle   = lipgloss.NewStyle().Foreground(accent)
 	approvedStyle = addStyle.Bold(true)
 	rejectedStyle = delStyle.Bold(true)
+	attention     = lipgloss.Color("3")
+	attentionDot  = lipgloss.NewStyle().Foreground(attention).Render("●")
+	unresolvedSt  = lipgloss.NewStyle().Foreground(attention)
+	badgeStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("0")).Background(accent).Padding(0, 1)
 )
 
 const (
-	listGutter = 2
+	listGutter = 3
 	cellGap    = "  "
 )
 
 type dashColumns struct {
-	number, subject, owner, vote, updated int
+	number, subject, owner, vote, comments, updated int
 }
 
 func newDashColumns(width int, compact bool) dashColumns {
-	c := dashColumns{number: 7, owner: 24, vote: 2, updated: 4}
+	c := dashColumns{number: 7, owner: 24, vote: 2, comments: 3, updated: 4}
 	if compact {
 		c.owner = 14
 	}
-	fixed := listGutter + c.number + c.owner + 2*c.vote + c.updated + 5*len(cellGap)
+	fixed := listGutter + c.number + c.owner + 2*c.vote + c.comments + c.updated + 6*len(cellGap)
 	c.subject = max(width-fixed, 10)
 	return c
 }
@@ -82,8 +88,14 @@ func (d *dashboard) selectNumber(n int) {
 	d.scroll()
 }
 
-func (d *dashboard) listHeight() int {
+// bodyHeight is the height below the title bar.
+func (d *dashboard) bodyHeight() int {
 	return max(d.height-1, 1)
+}
+
+// listHeight is the number of item lines below the column header.
+func (d *dashboard) listHeight() int {
+	return max(d.bodyHeight()-1, 1)
 }
 
 // scroll keeps the cursor visible, with the header of its section when it
@@ -113,10 +125,50 @@ func (d *dashboard) listView(width int) string {
 		if d.items[i].change == nil {
 			lines = append(lines, sectionLine(d.items[i].header, width))
 		} else {
-			lines = append(lines, changeLine(d.items[i].change, cols, i == d.cursor))
+			lines = append(lines, changeLine(d.items[i].change, cols, i == d.cursor, d.needsAttention(d.items[i].change)))
 		}
 	}
-	return lipgloss.NewStyle().Width(width).Height(d.height).Render(strings.Join(lines, "\n"))
+	return lipgloss.NewStyle().Width(width).Height(d.bodyHeight()).Render(strings.Join(lines, "\n"))
+}
+
+func (d *dashboard) needsAttention(c *gerrit.ChangeInfo) bool {
+	return d.self != nil && c.NeedsAttention(d.self.AccountID)
+}
+
+// titleBar shows the server and query, with the number of changes and of
+// those waiting on the user on the right.
+func (d *dashboard) titleBar() string {
+	left := badgeStyle.Render("gerrit") + " " + dimStyle.Render(hostOf(d.client)) + "  " + d.query
+	var counts []string
+	if !d.loading {
+		waiting := 0
+		for i := range d.changes {
+			if d.needsAttention(&d.changes[i]) {
+				waiting++
+			}
+		}
+		if waiting > 0 {
+			counts = append(counts, attentionDot+" "+unresolvedSt.Render(fmt.Sprintf("%d waiting on you", waiting)))
+		}
+		counts = append(counts, dimStyle.Render(fmt.Sprintf("%d changes", len(d.changes))))
+	}
+	right := strings.Join(counts, dimStyle.Render("  ·  "))
+	gap := d.width - ansi.StringWidth(left) - ansi.StringWidth(right) - 1
+	if gap < 1 {
+		return ansi.Truncate(left, d.width, "…")
+	}
+	return left + strings.Repeat(" ", gap) + right
+}
+
+func hostOf(c *gerrit.Client) string {
+	if c == nil {
+		return ""
+	}
+	u, err := url.Parse(c.BaseURL())
+	if err != nil || u.Host == "" {
+		return c.BaseURL()
+	}
+	return u.Host
 }
 
 func (d *dashboard) columnHeader(c dashColumns) string {
@@ -129,6 +181,7 @@ func (d *dashboard) columnHeader(c dashColumns) string {
 		cell("Owner", c.owner, false),
 		cell("CR", c.vote, false),
 		cell("V", c.vote, false),
+		cell("Cmt", c.comments, true),
 		cell("Upd", c.updated, true),
 	}, cellGap)
 }
@@ -138,13 +191,19 @@ func sectionLine(title string, width int) string {
 	return strings.Repeat(" ", listGutter) + sectionStyle.Render(title) + " " + dimStyle.Render(strings.Repeat("─", rule))
 }
 
-func changeLine(c *gerrit.ChangeInfo, cols dashColumns, selected bool) string {
+func changeLine(c *gerrit.ChangeInfo, cols dashColumns, selected, attn bool) string {
 	base := lipgloss.NewStyle()
-	gutter := "  "
+	bar := " "
 	if selected {
 		base = base.Background(selectedBg)
-		gutter = lipgloss.NewStyle().Foreground(accent).Inherit(base).Render("▌ ")
+		bar = "▌"
 	}
+	dot := " "
+	if attn {
+		dot = "●"
+	}
+	gutter := lipgloss.NewStyle().Foreground(accent).Inherit(base).Render(bar) +
+		lipgloss.NewStyle().Foreground(attention).Inherit(base).Render(dot) + base.Render(" ")
 
 	subject, subjectStyle := c.Subject, lipgloss.NewStyle()
 	if c.WorkInProgress {
@@ -163,6 +222,7 @@ func changeLine(c *gerrit.ChangeInfo, cols dashColumns, selected bool) string {
 		renderCell(lipgloss.NewStyle(), base, c.Owner.DisplayName(), cols.owner, false),
 		renderCell(crStyle, base, cr, cols.vote, false),
 		renderCell(vStyle, base, v, cols.vote, false),
+		renderCell(unresolvedSt, base, unresolved(c.UnresolvedCommentCount), cols.comments, true),
 		renderCell(dimStyle, base, relativeTime(c.Updated.Time), cols.updated, true),
 	}, gap)
 }
@@ -174,6 +234,13 @@ func renderCell(st, row lipgloss.Style, s string, w int, right bool) string {
 		st = st.Align(lipgloss.Right)
 	}
 	return st.Render(ansi.Truncate(s, w, "…"))
+}
+
+func unresolved(n int) string {
+	if n == 0 {
+		return ""
+	}
+	return strconv.Itoa(n)
 }
 
 // voteCell shows the decisive vote of a label: ✓ approved, ✗ rejected.

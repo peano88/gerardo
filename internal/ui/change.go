@@ -97,8 +97,8 @@ func (s *changeScreen) View() string {
 }
 
 func (s *changeScreen) Status() string {
-	return s.notice.status(s.loading, s.err,
-		fmt.Sprintf("%3.0f%% · ↑/↓ scroll · f files · v vote · y copy number · r reload · esc back", s.viewport.ScrollPercent()*100))
+	return s.notice.status(s.loading, s.err, dimStyle.Render(fmt.Sprintf("%3.0f%%", s.viewport.ScrollPercent()*100))+"   "+
+		keyHints("↑/↓", "scroll", "f", "files", "v", "vote", "y", "copy number", "r", "reload", "esc", "back"))
 }
 
 func (s *changeScreen) SetSize(width, height int) {

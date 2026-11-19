@@ -2,6 +2,7 @@
 package ui
 
 import (
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -96,6 +97,17 @@ func (a App) top() screen {
 
 func (a App) bodySize() (int, int) {
 	return a.width, max(a.height-1, 1)
+}
+
+var hintKeyStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Bold(true)
+
+// keyHints renders key, description pairs for the status line.
+func keyHints(pairs ...string) string {
+	var hints []string
+	for i := 0; i+1 < len(pairs); i += 2 {
+		hints = append(hints, hintKeyStyle.Render(pairs[i])+" "+dimStyle.Render(pairs[i+1]))
+	}
+	return strings.Join(hints, "   ")
 }
 
 func status(loading bool, err error, help string) string {
