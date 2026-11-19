@@ -15,6 +15,7 @@ var (
 	addedEditBg   = lipgloss.Color("#2f6140")
 	deletedBg     = lipgloss.Color("#3d2529")
 	deletedEditBg = lipgloss.Color("#743540")
+	emptySideBg   = lipgloss.Color("#202020")
 	searchStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#1e1e2e")).Background(lipgloss.Color("#f9e2af"))
 )
 

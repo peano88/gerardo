@@ -57,6 +57,7 @@ type diffScreen struct {
 	loading     bool
 	err         error
 	notice      string
+	sideBySide  bool
 	// focusThread is the root of the thread to put the cursor on once loaded.
 	focusThread string
 
@@ -361,6 +362,13 @@ func (s *diffScreen) handleKey(key string) (screen, tea.Cmd) {
 		return s, s.toggleResolved()
 	case "v":
 		return s, push(newReviewScreen(s.client, s.change))
+	case "s":
+		keep := s.anchor()
+		s.sideBySide = !s.sideBySide
+		s.rerender()
+		s.cursor = s.findAnchor(keep)
+		s.viewport.SetXOffset(0)
+		s.refresh()
 	case "ctrl+l":
 		return s, s.Init()
 	}
@@ -440,6 +448,8 @@ func (s *diffScreen) findAnchor(an anchor) int {
 			return i
 		case an.threadID == "" && t.hasLine && t.line.a == an.a && t.line.b == an.b && (an.a != 0 || an.b != 0):
 			return i
+		case an.threadID == "" && t.hasAlt && t.alt.a == an.a && t.alt.b == an.b && an.a != 0:
+			return i
 		}
 	}
 	for i, t := range s.rendered.targets {
@@ -504,10 +514,11 @@ func (s *diffScreen) rerender() {
 	}
 	// One column is reserved for the cursor marker.
 	s.rendered = renderDiff(s.path(), s.diff, s.threads, diffOptions{
-		context: context,
-		width:   s.viewport.Width - 1,
-		syntax:  s.syntax,
-		search:  searchRegexp(s.query),
+		context:    context,
+		width:      s.viewport.Width - 1,
+		syntax:     s.syntax,
+		search:     searchRegexp(s.query),
+		sideBySide: s.sideBySide,
 	})
 }
 
@@ -734,7 +745,7 @@ func (s *diffScreen) Status() string {
 		return s.searchInput.View()
 	}
 	help := dimStyle.Render(fmt.Sprintf("[%d/%d] %d threads (%d open, %d drafts)", s.index+1, len(s.paths), len(s.threads), unresolved, drafts)) + "   " +
-		keyHints("]/[", "thread", "c", "comment", "r", "reply", "A/D", "ack/done", "v", "publish", "?", "help")
+		keyHints("]/[", "thread", "c", "comment", "r", "reply", "A/D", "ack/done", "s", s.layoutHint(), "v", "publish", "?", "help")
 	if s.query != "" {
 		help = fmt.Sprintf("/%s: %d matches · %s", s.query, len(s.rendered.matchRows), help)
 	}
@@ -747,6 +758,13 @@ func (s *diffScreen) Status() string {
 		help = s.notice
 	}
 	return status(s.loading, s.err, help)
+}
+
+func (s *diffScreen) layoutHint() string {
+	if s.sideBySide {
+		return "unified"
+	}
+	return "side by side"
 }
 
 func countPrefix(n int) string {
@@ -783,8 +801,10 @@ Search
   n / N               next / previous match
   esc                 clear the search highlight
 
-Folding
+Folding and layout
   zR / zM / za        show the whole file / changes only / toggle
+  s                   side by side / unified diff; side by side, new
+                      comments on a changed row go on the new side
 
 Comments
   c, i, enter         comment on the cursor line (file comment on the header);

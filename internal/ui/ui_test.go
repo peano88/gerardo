@@ -342,3 +342,52 @@ func TestRenderChangeHeader(t *testing.T) {
 		t.Fatalf("got:\n%s\nwant:\n%s", strings.Join(got[:len(want)], "\n"), strings.Join(want, "\n"))
 	}
 }
+
+func TestPairLines(t *testing.T) {
+	lines := flattenDiff(&gerrit.DiffInfo{Content: []gerrit.DiffContent{
+		{AB: []string{"a"}},
+		{A: []string{"d1", "d2"}, B: []string{"b1"}},
+		{AB: []string{"c"}},
+		{B: []string{"b2"}},
+	}})
+	got := pairLines(lines)
+	want := []diffRow{{0, 0}, {1, 3}, {2, -1}, {4, 4}, {-1, 5}}
+	if !slices.Equal(got, want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+}
+
+func TestRenderDiffSideBySide(t *testing.T) {
+	d := &gerrit.DiffInfo{Content: []gerrit.DiffContent{
+		{AB: []string{"same"}},
+		{A: []string{"old"}, B: []string{"new"}},
+	}}
+	threads := []gerrit.Thread{{Comments: []gerrit.CommentInfo{{ID: "t", Line: 2, Side: gerrit.SideParent, Message: "on old"}}}}
+	r := renderDiff("f", d, threads, diffOptions{context: 3, width: 41, sideBySide: true})
+	got := plainLines(r.content)
+	want := []string{
+		"f",
+		"",
+		"    1   same        │    1   same",
+		"    2 - old         │    2 + new",
+	}
+	if strings.Join(got[:4], "\n") != strings.Join(want, "\n") {
+		t.Fatalf("got:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+	if find := strings.Index(strings.Join(got, "\n"), "on old"); find < len(strings.Join(got[:4], "\n")) || r.targets[3].line.b != 2 || !r.targets[3].hasAlt || r.targets[3].alt.a != 2 {
+		t.Fatalf("parent side thread should follow its row, targeting both lines:\n%s", strings.Join(got, "\n"))
+	}
+}
+
+func TestDiffToggleSideBySideKeepsCursor(t *testing.T) {
+	s := newTestDiffScreen(t, nil)
+	press(s, "2", "6", "G")
+	s.handleKey("s")
+	if tg := s.target(); !s.sideBySide || tg.line.b != 26 {
+		t.Fatalf("toggling should keep the cursor on its line, got %+v", tg)
+	}
+	s.handleKey("s")
+	if tg := s.target(); s.sideBySide || tg.line.b != 26 {
+		t.Fatalf("toggling back should keep the cursor, got %+v", tg)
+	}
+}
