@@ -232,8 +232,11 @@ func TestAppNavigation(t *testing.T) {
 	}
 
 	app, cmd := app.Update(popMsg{})
-	if v := app.View(); !strings.HasPrefix(v, "root") || cmd != nil {
+	if v := app.View(); !strings.HasPrefix(v, "root") {
 		t.Fatalf("after pop: got %q", v)
+	}
+	if _, ok := cmd().(focusMsg); !ok {
+		t.Fatal("pop should focus the uncovered screen")
 	}
 
 	_, cmd = app.Update(popMsg{})

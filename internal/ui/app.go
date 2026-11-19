@@ -26,6 +26,9 @@ type pushMsg struct{ screen screen }
 
 type popMsg struct{}
 
+// focusMsg tells the screen uncovered by a pop that it is on top again.
+type focusMsg struct{}
+
 func push(s screen) tea.Cmd {
 	return func() tea.Msg { return pushMsg{screen: s} }
 }
@@ -74,7 +77,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, tea.Quit
 		}
 		a.stack = a.stack[:len(a.stack)-1]
-		return a, nil
+		return a, func() tea.Msg { return focusMsg{} }
 	}
 
 	s, cmd := a.top().Update(msg)
