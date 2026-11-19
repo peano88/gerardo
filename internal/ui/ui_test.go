@@ -162,7 +162,10 @@ func TestTablesWithRowsBeforeSize(t *testing.T) {
 			"main.go":     {LinesInserted: 3},
 		}}},
 	}
-	if v := newFilesScreen(nil, change).View(); !strings.Contains(v, "main.go") {
+	files := newFilesScreen(nil, change)
+	_ = files.View()
+	files.SetSize(80, 10)
+	if v := files.View(); !strings.Contains(v, "main.go") || !strings.Contains(v, "Commit message") {
 		t.Fatalf("files screen: got %q", v)
 	}
 

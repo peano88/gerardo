@@ -1,14 +1,17 @@
 package ui
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 
-	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/peano88/gerrit-tui/internal/gerrit"
 )
@@ -52,49 +55,17 @@ type filesScreen struct {
 	rev      gerrit.RevisionInfo
 	paths    []string
 	comments changeComments
-	table    table.Model
+	cursor   int
+	offset   int
+	width    int
+	height   int
 	loading  bool
 	err      error
 }
 
 func newFilesScreen(client *gerrit.Client, change *gerrit.ChangeInfo) *filesScreen {
 	rev, _ := change.Current()
-	s := &filesScreen{
-		client: client,
-		change: change,
-		rev:    rev,
-		paths:  rev.SortedPaths(),
-		table:  table.New(table.WithFocused(true), table.WithColumns(fileColumns(0))),
-	}
-	s.table.SetRows(s.rows())
-	return s
-}
-
-func (s *filesScreen) rows() []table.Row {
-	rows := make([]table.Row, 0, len(s.paths))
-	for _, p := range s.paths {
-		f := s.rev.Files[p]
-		st := f.Status
-		if st == "" {
-			st = "M"
-		}
-		threads, open := 0, 0
-		for _, t := range s.comments.threads(p, s.rev.Number) {
-			threads++
-			if t.Unresolved() {
-				open++
-			}
-		}
-		var count string
-		switch {
-		case open > 0:
-			count = fmt.Sprintf("%d (%d open)", threads, open)
-		case threads > 0:
-			count = strconv.Itoa(threads)
-		}
-		rows = append(rows, table.Row{st, fmt.Sprintf("+%d", f.LinesInserted), fmt.Sprintf("-%d", f.LinesDeleted), count, p})
-	}
-	return rows
+	return &filesScreen{client: client, change: change, rev: rev, paths: rev.SortedPaths()}
 }
 
 func (s *filesScreen) Init() tea.Cmd {
@@ -113,11 +84,10 @@ func (s *filesScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
 	case commentsLoadedMsg:
 		s.loading, s.err = false, msg.err
 		s.comments = msg.comments
-		s.table.SetRows(s.rows())
 		return s, nil
 
 	case fileSelectedMsg:
-		s.table.SetCursor(msg.index)
+		s.setCursor(msg.index)
 		return s, nil
 
 	case tea.KeyMsg:
@@ -126,43 +96,202 @@ func (s *filesScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
 			return s, pop
 		case "r":
 			return s, s.Init()
+		case "up", "k":
+			s.setCursor(s.cursor - 1)
+		case "down", "j":
+			s.setCursor(s.cursor + 1)
+		case "pgup", "ctrl+b":
+			s.setCursor(s.cursor - s.listHeight())
+		case "pgdown", "ctrl+f":
+			s.setCursor(s.cursor + s.listHeight())
+		case "ctrl+u":
+			s.setCursor(s.cursor - s.listHeight()/2)
+		case "ctrl+d":
+			s.setCursor(s.cursor + s.listHeight()/2)
+		case "home", "g":
+			s.setCursor(0)
+		case "end", "G":
+			s.setCursor(len(s.paths) - 1)
 		case "enter":
 			if len(s.paths) == 0 {
 				return s, nil
 			}
-			return s, push(newDiffScreen(s.client, s.change, s.paths, s.table.Cursor()))
+			return s, push(newDiffScreen(s.client, s.change, s.paths, s.cursor))
 		}
 	}
+	return s, nil
+}
 
-	var cmd tea.Cmd
-	s.table, cmd = s.table.Update(msg)
-	return s, cmd
+func (s *filesScreen) listHeight() int {
+	return max(s.height-1, 1)
+}
+
+func (s *filesScreen) setCursor(i int) {
+	s.cursor = min(max(i, 0), max(len(s.paths)-1, 0))
+	h := s.listHeight()
+	if s.cursor < s.offset {
+		s.offset = s.cursor
+	}
+	if s.cursor >= s.offset+h {
+		s.offset = s.cursor - h + 1
+	}
+	s.offset = min(max(s.offset, 0), max(len(s.paths)-h, 0))
+}
+
+// fileThreads counts the threads shown on path, and how many are unresolved.
+func (s *filesScreen) fileThreads(path string) (threads, open int) {
+	for _, t := range s.comments.threads(path, s.rev.Number) {
+		threads++
+		if t.Unresolved() {
+			open++
+		}
+	}
+	return threads, open
+}
+
+type fileColumns struct {
+	path, lines, churn, threads int
+}
+
+func newFileColumns(width int) fileColumns {
+	c := fileColumns{lines: 6, churn: 10, threads: 8}
+	c.path = max(width-listGutter-1-c.churn-2*c.lines-c.threads-5*len(cellGap), 20)
+	return c
 }
 
 func (s *filesScreen) View() string {
-	return s.table.View()
+	cols := newFileColumns(s.width)
+	maxLines := 1
+	for _, f := range s.rev.Files {
+		maxLines = max(maxLines, f.LinesInserted+f.LinesDeleted)
+	}
+
+	head := func(t string, w int, right bool) string {
+		return renderCell(columnStyle, lipgloss.NewStyle(), t, w, right)
+	}
+	lines := []string{strings.Repeat(" ", listGutter) + strings.Join([]string{
+		head("", 1, false), head("Path", cols.path, false), head("+", cols.lines, true), head("-", cols.lines, true),
+		head("", cols.churn, false), head("Threads", cols.threads, true),
+	}, cellGap)}
+	for i := s.offset; i < min(len(s.paths), s.offset+s.listHeight()); i++ {
+		lines = append(lines, s.fileLine(s.paths[i], cols, maxLines, i == s.cursor))
+	}
+	return lipgloss.NewStyle().Width(s.width).Height(s.height).Render(strings.Join(lines, "\n"))
+}
+
+func (s *filesScreen) fileLine(path string, cols fileColumns, maxLines int, selected bool) string {
+	f := s.rev.Files[path]
+	base := lipgloss.NewStyle()
+	gutter := "   "
+	if selected {
+		base = base.Background(selectedBg)
+		gutter = lipgloss.NewStyle().Foreground(accent).Inherit(base).Render("▌") + base.Render("  ")
+	}
+	st := cmp.Or(f.Status, "M")
+
+	threads, open := s.fileThreads(path)
+	var count string
+	countStyle := dimStyle
+	switch {
+	case open > 0:
+		count, countStyle = fmt.Sprintf("● %d/%d", open, threads), unresolvedSt
+	case threads > 0:
+		count = strconv.Itoa(threads)
+	}
+
+	gap := base.Render(cellGap)
+	return gutter + strings.Join([]string{
+		renderCell(fileStatusStyle(st).Bold(true), base, st, 1, false),
+		renderPath(path, cols.path, base, selected),
+		renderCell(addStyle, base, plusMinus("+", f.LinesInserted), cols.lines, true),
+		renderCell(delStyle, base, plusMinus("-", f.LinesDeleted), cols.lines, true),
+		churnBar(f.LinesInserted, f.LinesDeleted, maxLines, cols.churn, base),
+		renderCell(countStyle, base, count, cols.threads, true),
+	}, gap)
+}
+
+func plusMinus(sign string, n int) string {
+	if n == 0 {
+		return ""
+	}
+	return sign + strconv.Itoa(n)
+}
+
+// renderPath shows the directory of a file dimmed before its name, cutting
+// the directory first when the path does not fit.
+func renderPath(path string, width int, base lipgloss.Style, selected bool) string {
+	var dir, name string
+	switch path {
+	case gerrit.CommitMessage:
+		name = "Commit message"
+	case "/MERGE_LIST":
+		name = "Merge list"
+	default:
+		if i := strings.LastIndex(path, "/"); i >= 0 {
+			dir, name = path[:i+1], path[i+1:]
+		} else {
+			name = path
+		}
+	}
+	nameStyle := lipgloss.NewStyle().Inherit(base)
+	if selected {
+		nameStyle = nameStyle.Bold(true)
+	}
+	nameWidth, dirWidth := ansi.StringWidth(name), ansi.StringWidth(dir)
+	switch room := width - nameWidth; {
+	case room <= 1:
+		dir, name = "", ansi.Truncate(name, width, "…")
+	case dirWidth > room:
+		dir = "…" + ansi.TruncateLeft(dir, dirWidth-room+1, "")
+	}
+	return base.Width(width).Render(dimStyle.Inherit(base).Render(dir) + nameStyle.Render(name))
+}
+
+// churnBar draws the inserted and deleted lines of a file relative to the
+// largest file of the change.
+func churnBar(inserted, deleted, maxLines, width int, base lipgloss.Style) string {
+	total := inserted + deleted
+	cells := 0
+	if total > 0 {
+		cells = max(1, total*width/maxLines)
+	}
+	plus := 0
+	if total > 0 {
+		plus = (inserted*cells + total/2) / total
+	}
+	return addStyle.Inherit(base).Render(strings.Repeat("■", plus)) +
+		delStyle.Inherit(base).Render(strings.Repeat("■", cells-plus)) +
+		base.Render(strings.Repeat(" ", width-cells))
 }
 
 func (s *filesScreen) Title() string {
 	return fmt.Sprintf("PS%d files", s.rev.Number)
 }
 
+// TitleInfo sums up the files of the revision.
+func (s *filesScreen) TitleInfo() string {
+	inserted, deleted, threads, open := 0, 0, 0, 0
+	for _, p := range s.paths {
+		f := s.rev.Files[p]
+		inserted, deleted = inserted+f.LinesInserted, deleted+f.LinesDeleted
+		t, o := s.fileThreads(p)
+		threads, open = threads+t, open+o
+	}
+	info := []string{dimStyle.Render(plural(len(s.paths), "file")), addStyle.Render(fmt.Sprintf("+%d", inserted)) + " " + delStyle.Render(fmt.Sprintf("-%d", deleted))}
+	if threads > 0 {
+		info = append(info, dimStyle.Render(plural(threads, "thread")))
+	}
+	if open > 0 {
+		info = append(info, unresolvedSt.Render(fmt.Sprintf("● %d open", open)))
+	}
+	return strings.Join(info, dimStyle.Render("  ·  "))
+}
+
 func (s *filesScreen) Status() string {
-	return status(s.loading, s.err, fmt.Sprintf("%d: PS%d · %d files · enter diff · r reload · esc back", s.change.Number, s.rev.Number, len(s.paths)))
+	return status(s.loading, s.err, keyHints("enter", "diff", "↑/↓", "select", "r", "reload", "esc", "back"))
 }
 
 func (s *filesScreen) SetSize(width, height int) {
-	s.table.SetColumns(fileColumns(width))
-	s.table.SetHeight(height)
-}
-
-func fileColumns(width int) []table.Column {
-	const st, lines, threads = 3, 7, 12
-	return []table.Column{
-		{Title: "St", Width: st},
-		{Title: "+", Width: lines},
-		{Title: "-", Width: lines},
-		{Title: "Threads", Width: threads},
-		{Title: "Path", Width: max(width-st-2*lines-threads-2*5, 20)},
-	}
+	s.width, s.height = width, height
+	s.setCursor(s.cursor)
 }
