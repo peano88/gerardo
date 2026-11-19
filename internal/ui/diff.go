@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -22,6 +23,7 @@ const (
 type diffLoadedMsg struct {
 	path    string
 	diff    *gerrit.DiffInfo
+	syntax  *syntaxLines
 	threads []gerrit.Thread
 	err     error
 }
@@ -45,6 +47,7 @@ type diffScreen struct {
 	index       int
 	fullContext bool
 	diff        *gerrit.DiffInfo
+	syntax      *syntaxLines
 	threads     []gerrit.Thread
 	rendered    renderedDiff
 	cursor      int
@@ -54,12 +57,20 @@ type diffScreen struct {
 	loading     bool
 	err         error
 	notice      string
+
+	searching    bool
+	searchInput  textinput.Model
+	query        string
+	prevQuery    string
+	searchOrigin int
 }
 
 func newDiffScreen(client *gerrit.Client, change *gerrit.ChangeInfo, paths []string, index int) *diffScreen {
 	vp := viewport.New(0, 0)
 	vp.SetHorizontalStep(hScrollStep)
-	return &diffScreen{client: client, change: change, paths: paths, index: index, viewport: vp}
+	in := textinput.New()
+	in.Prompt = "/"
+	return &diffScreen{client: client, change: change, paths: paths, index: index, viewport: vp, searchInput: in}
 }
 
 func (s *diffScreen) path() string {
@@ -91,7 +102,13 @@ func (s *diffScreen) Init() tea.Cmd {
 		if diffErr != nil {
 			return diffLoadedMsg{path: path, err: diffErr}
 		}
-		return diffLoadedMsg{path: path, diff: diff, threads: comments.threads(path, number), err: commentErr}
+		return diffLoadedMsg{
+			path:    path,
+			diff:    diff,
+			syntax:  highlightDiff(path, diff),
+			threads: comments.threads(path, number),
+			err:     commentErr,
+		}
 	}
 }
 
@@ -105,7 +122,7 @@ func (s *diffScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
 		if msg.diff != nil {
 			reload := s.diff != nil
 			keep := s.anchor()
-			s.diff, s.threads = msg.diff, msg.threads
+			s.diff, s.syntax, s.threads = msg.diff, msg.syntax, msg.threads
 			s.rerender()
 			if reload {
 				s.cursor = s.findAnchor(keep)
@@ -141,9 +158,110 @@ func (s *diffScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
 		return s, s.Init()
 
 	case tea.KeyMsg:
+		if s.searching {
+			return s, s.handleSearchKey(msg)
+		}
 		return s.handleKey(msg.String())
 	}
 	return s, nil
+}
+
+func (s *diffScreen) startSearch() tea.Cmd {
+	s.searching, s.prevQuery, s.searchOrigin = true, s.query, s.cursor
+	s.searchInput.SetValue("")
+	return s.searchInput.Focus()
+}
+
+// handleSearchKey edits the search query, moving to the first match after the
+// cursor as the query is typed (vim's incsearch).
+func (s *diffScreen) handleSearchKey(msg tea.KeyMsg) tea.Cmd {
+	switch msg.String() {
+	case "esc":
+		s.searching = false
+		s.searchInput.Blur()
+		s.setQuery(s.prevQuery)
+		s.setCursor(s.searchOrigin)
+		return nil
+	case "enter":
+		s.searching = false
+		s.searchInput.Blur()
+		if s.query == "" {
+			s.setQuery(s.prevQuery)
+			return nil
+		}
+		if len(s.rendered.matchRows) == 0 {
+			s.notice = s.notFound()
+		}
+		return nil
+	}
+
+	var cmd tea.Cmd
+	s.searchInput, cmd = s.searchInput.Update(msg)
+	if v := s.searchInput.Value(); v != s.query {
+		s.setQuery(v)
+		s.cursor = s.searchOrigin
+		if !s.jumpMatch(1, true) {
+			s.setCursor(s.searchOrigin)
+		}
+		s.notice = ""
+	}
+	return cmd
+}
+
+func (s *diffScreen) setQuery(q string) {
+	if q == s.query {
+		return
+	}
+	keep := s.anchor()
+	s.query = q
+	s.rerender()
+	s.cursor = s.findAnchor(keep)
+	s.refresh()
+}
+
+func (s *diffScreen) notFound() string {
+	if s.rendered.hiddenMatches > 0 {
+		return fmt.Sprintf("%q only matches folded lines, zR to unfold", s.query)
+	}
+	return fmt.Sprintf("pattern not found: %s", s.query)
+}
+
+// jumpMatch moves the cursor to the next (direction 1) or previous (-1)
+// search match, wrapping around. inclusive accepts a match on the cursor row.
+func (s *diffScreen) jumpMatch(direction int, inclusive bool) bool {
+	rows := s.rendered.matchRows
+	if len(rows) == 0 {
+		return false
+	}
+	if direction > 0 {
+		for _, r := range rows {
+			if r > s.cursor || (inclusive && r == s.cursor) {
+				s.setCursor(r)
+				return true
+			}
+		}
+		s.setCursor(rows[0])
+		s.notice = "search hit BOTTOM, continuing at TOP"
+		return true
+	}
+	for i := len(rows) - 1; i >= 0; i-- {
+		if rows[i] < s.cursor {
+			s.setCursor(rows[i])
+			return true
+		}
+	}
+	s.setCursor(rows[len(rows)-1])
+	s.notice = "search hit TOP, continuing at BOTTOM"
+	return true
+}
+
+func (s *diffScreen) searchNext(direction int) {
+	switch {
+	case s.query == "":
+		s.notice = "no previous search, use / to search"
+	case !s.jumpMatch(direction, false):
+		s.notice = s.notFound()
+	}
 }
 
 func (s *diffScreen) handleKey(key string) (screen, tea.Cmd) {
@@ -162,9 +280,20 @@ func (s *diffScreen) handleKey(key string) (screen, tea.Cmd) {
 	half := max(s.viewport.Height/2, 1)
 
 	switch key {
-	case "q", "esc", "backspace":
-		index := s.index
-		return s, tea.Sequence(pop, func() tea.Msg { return fileSelectedMsg{index: index} })
+	case "esc":
+		if s.query != "" {
+			s.setQuery("")
+			return s, nil
+		}
+		return s, s.back()
+	case "q", "backspace":
+		return s, s.back()
+	case "/":
+		return s, s.startSearch()
+	case "n":
+		s.searchNext(1)
+	case "N":
+		s.searchNext(-1)
 	case "?":
 		return s, push(newHelpScreen("Diff keys", diffHelp))
 	case "j", "down":
@@ -204,9 +333,9 @@ func (s *diffScreen) handleKey(key string) (screen, tea.Cmd) {
 		s.jumpThread(1)
 	case "[":
 		s.jumpThread(-1)
-	case "n":
+	case "tab":
 		return s, s.moveTo(s.index + 1)
-	case "p":
+	case "shift+tab":
 		return s, s.moveTo(s.index - 1)
 	case "c", "i", "enter":
 		return s, s.comment()
@@ -226,6 +355,11 @@ func (s *diffScreen) handleKey(key string) (screen, tea.Cmd) {
 		return s, s.Init()
 	}
 	return s, nil
+}
+
+func (s *diffScreen) back() tea.Cmd {
+	index := s.index
+	return tea.Sequence(pop, func() tea.Msg { return fileSelectedMsg{index: index} })
 }
 
 func (s *diffScreen) handlePending(pending, key string) tea.Cmd {
@@ -262,7 +396,7 @@ func (s *diffScreen) moveTo(index int) tea.Cmd {
 		return nil
 	}
 	s.index = index
-	s.diff, s.threads, s.rendered = nil, nil, renderedDiff{}
+	s.diff, s.syntax, s.threads, s.rendered = nil, nil, nil, renderedDiff{}
 	s.cursor = 0
 	s.viewport.SetContent("")
 	return s.Init()
@@ -349,7 +483,12 @@ func (s *diffScreen) rerender() {
 		context = -1
 	}
 	// One column is reserved for the cursor marker.
-	s.rendered = renderDiff(s.path(), s.diff, context, s.threads, s.viewport.Width-1)
+	s.rendered = renderDiff(s.path(), s.diff, s.threads, diffOptions{
+		context: context,
+		width:   s.viewport.Width - 1,
+		syntax:  s.syntax,
+		search:  searchRegexp(s.query),
+	})
 }
 
 // refresh redraws the cursor marker and keeps the cursor visible.
@@ -578,8 +717,14 @@ func (s *diffScreen) Status() string {
 			}
 		}
 	}
+	if s.searching {
+		return s.searchInput.View()
+	}
 	help := fmt.Sprintf("[%d/%d] %s · %d threads (%d open, %d drafts) · ? help",
 		s.index+1, len(s.paths), s.path(), len(s.threads), unresolved, drafts)
+	if s.query != "" {
+		help = fmt.Sprintf("/%s: %d matches · %s", s.query, len(s.rendered.matchRows), help)
+	}
 	switch {
 	case s.pending != "" && s.notice != "":
 		help = s.notice
@@ -617,7 +762,13 @@ const diffHelp = `Motions
   zz                  center the cursor
   h / l, ← / →, 0     scroll left / right / back to the start
   ] / [               next / previous thread
-  n / p               next / previous file
+  tab / shift-tab     next / previous file
+
+Search
+  /                   search as you type, case-insensitive unless the
+                      query has an upper-case letter; enter to confirm
+  n / N               next / previous match
+  esc                 clear the search highlight
 
 Folding
   zR / zM / za        show the whole file / changes only / toggle

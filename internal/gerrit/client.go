@@ -69,9 +69,10 @@ func (c *Client) GetChange(ctx context.Context, id string) (*ChangeInfo, error) 
 	return &change, nil
 }
 
-// GetDiff fetches the full-file diff of a file in a revision against its parent.
+// GetDiff fetches the full-file diff of a file in a revision against its
+// parent, with intraline edits.
 func (c *Client) GetDiff(ctx context.Context, change, revision, path string) (*DiffInfo, error) {
-	p := fmt.Sprintf("/changes/%s/revisions/%s/files/%s/diff?context=ALL",
+	p := fmt.Sprintf("/changes/%s/revisions/%s/files/%s/diff?context=ALL&intraline=true",
 		url.PathEscape(change), url.PathEscape(revision), url.PathEscape(path))
 	var diff DiffInfo
 	if err := c.get(ctx, p, &diff); err != nil {

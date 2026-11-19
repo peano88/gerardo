@@ -25,6 +25,7 @@ func main() {
 func run() error {
 	baseURL := flag.String("url", envOr("GERRIT_URL", "https://review.example.com"), "Gerrit server URL")
 	query := flag.String("q", "is:open (owner:self OR reviewer:self)", "Gerrit search query for the dashboard")
+	flag.StringVar(&ui.SyntaxStyle, "style", envOr("GERRIT_TUI_STYLE", ui.SyntaxStyle), "chroma style used to highlight diffs")
 	flag.Parse()
 
 	user, password, err := credentials(*baseURL)

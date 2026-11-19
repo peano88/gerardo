@@ -2,10 +2,13 @@ package ui
 
 import (
 	"fmt"
+	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/peano88/gerrit-tui/internal/gerrit"
 )
@@ -28,6 +31,7 @@ type diffLine struct {
 	a, b    int
 	text    string
 	skipped int
+	edits   []mark
 }
 
 func flattenDiff(d *gerrit.DiffInfo) []diffLine {
@@ -39,12 +43,14 @@ func flattenDiff(d *gerrit.DiffInfo) []diffLine {
 			a++
 			b++
 		}
-		for _, t := range c.A {
-			lines = append(lines, diffLine{kind: lineDeleted, a: a, text: t})
+		editsA := intralineMarks(c.A, c.EditA)
+		for i, t := range c.A {
+			lines = append(lines, diffLine{kind: lineDeleted, a: a, text: t, edits: editsA[i]})
 			a++
 		}
-		for _, t := range c.B {
-			lines = append(lines, diffLine{kind: lineAdded, b: b, text: t})
+		editsB := intralineMarks(c.B, c.EditB)
+		for i, t := range c.B {
+			lines = append(lines, diffLine{kind: lineAdded, b: b, text: t, edits: editsB[i]})
 			b++
 		}
 		if c.Skip > 0 {
@@ -119,13 +125,25 @@ type rowTarget struct {
 
 var noTarget = rowTarget{thread: -1}
 
-// renderedDiff is a rendered diff: its rows, what each row refers to, and the
-// row of each thread header, in order.
+// renderedDiff is a rendered diff: its rows, what each row refers to, the row
+// of each thread header and of each search match, in order, and the number of
+// matching lines hidden in folds.
 type renderedDiff struct {
 	content       string
 	lines         []string
 	targets       []rowTarget
 	threadOffsets []int
+	matchRows     []int
+	hiddenMatches int
+}
+
+// diffOptions controls the rendering of a diff. A negative context renders
+// the whole file; width is the space available for a row.
+type diffOptions struct {
+	context int
+	width   int
+	syntax  *syntaxLines
+	search  *regexp.Regexp
 }
 
 func (r *renderedDiff) add(s string, t rowTarget) {
@@ -134,12 +152,14 @@ func (r *renderedDiff) add(s string, t rowTarget) {
 }
 
 // renderDiff renders a unified diff with its comment threads, keeping context
-// unchanged lines around each change and thread; a negative context renders
-// the whole file.
-func renderDiff(path string, d *gerrit.DiffInfo, context int, threads []gerrit.Thread, width int) (r renderedDiff) {
+// unchanged lines around each change and thread.
+func renderDiff(path string, d *gerrit.DiffInfo, threads []gerrit.Thread, opts diffOptions) (r renderedDiff) {
 	writeThread := func(i int) {
 		r.threadOffsets = append(r.threadOffsets, len(r.lines))
-		for _, l := range renderThread(threads[i], width) {
+		for _, l := range renderThread(threads[i], opts.width) {
+			if opts.search != nil && opts.search.MatchString(ansi.Strip(l)) {
+				r.matchRows = append(r.matchRows, len(r.lines))
+			}
 			r.add(l, rowTarget{thread: i})
 		}
 	}
@@ -181,7 +201,7 @@ func renderDiff(path string, d *gerrit.DiffInfo, context int, threads []gerrit.T
 		}
 		return false
 	}
-	visible := visibleLines(lines, context, hasThreads)
+	visible := visibleLines(lines, opts.context, hasThreads)
 
 	hidden := 0
 	flush := func() {
@@ -195,12 +215,19 @@ func renderDiff(path string, d *gerrit.DiffInfo, context int, threads []gerrit.T
 			hidden += l.skipped
 			continue
 		}
+		matches := searchMarks(opts.search, l.text)
 		if !visible[i] {
 			hidden++
+			if len(matches) > 0 {
+				r.hiddenMatches++
+			}
 			continue
 		}
 		flush()
-		r.add(renderDiffLine(l), rowTarget{line: l, hasLine: true, thread: -1})
+		if len(matches) > 0 {
+			r.matchRows = append(r.matchRows, len(r.lines))
+		}
+		r.add(renderDiffLine(l, opts.syntax.spans(l), matches, opts.width), rowTarget{line: l, hasLine: true, thread: -1})
 		for _, k := range l.threadKeys() {
 			for _, t := range byLine[k] {
 				writeThread(t)
@@ -219,7 +246,9 @@ func renderDiff(path string, d *gerrit.DiffInfo, context int, threads []gerrit.T
 	return r
 }
 
-func renderDiffLine(l diffLine) string {
+// renderDiffLine renders a diff line with its syntax highlighting, intraline
+// edits and search matches. Changed lines get a background padded to width.
+func renderDiffLine(l diffLine, spans []span, matches []mark, width int) string {
 	num := func(n int) string {
 		if n == 0 {
 			return ""
@@ -227,15 +256,30 @@ func renderDiffLine(l diffLine) string {
 		return strconv.Itoa(n)
 	}
 	gutter := dimStyle.Render(fmt.Sprintf("%5s %5s ", num(l.a), num(l.b)))
-	text := strings.ReplaceAll(l.text, "\t", "    ")
+
+	var bg, editBg lipgloss.TerminalColor
+	marker, base := " ", lipgloss.NewStyle()
 	switch l.kind {
 	case lineDeleted:
-		return gutter + delStyle.Render("- "+text)
+		bg, editBg, marker, base = deletedBg, deletedEditBg, "-", delStyle
 	case lineAdded:
-		return gutter + addStyle.Render("+ "+text)
-	default:
-		return gutter + "  " + text
+		bg, editBg, marker, base = addedBg, addedEditBg, "+", addStyle
 	}
+	markerStyle := base
+	if len(spans) > 0 {
+		base = lipgloss.NewStyle()
+	}
+	if bg != nil {
+		markerStyle = markerStyle.Background(bg)
+	}
+	text := paint(l.text, spans, append(slices.Clone(l.edits), matches...), base, bg, editBg)
+	out := gutter + markerStyle.Render(marker+" ") + text
+	if bg != nil {
+		if pad := width - gutterWidth - 2 - lipgloss.Width(expandTabs(l.text)); pad > 0 {
+			out += lipgloss.NewStyle().Background(bg).Render(strings.Repeat(" ", pad))
+		}
+	}
+	return out
 }
 
 func renderThread(t gerrit.Thread, width int) []string {

@@ -194,6 +194,10 @@ type DiffContent struct {
 	A    []string `json:"a"`
 	B    []string `json:"b"`
 	Skip int      `json:"skip"`
+	// EditA and EditB are the intraline edits of a replaced region, as
+	// [skip, mark] pairs of UTF-16 code units over its lines joined by newlines.
+	EditA [][2]int `json:"edit_a"`
+	EditB [][2]int `json:"edit_b"`
 }
 
 // DiffInfo is the diff of a file between a revision and its parent.

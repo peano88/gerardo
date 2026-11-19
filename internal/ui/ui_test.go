@@ -13,7 +13,16 @@ import (
 	"github.com/peano88/gerrit-tui/internal/gerrit"
 )
 
-var ansi = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+var ansiRe = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+// plainLines strips the styling and the trailing background padding of rendered rows.
+func plainLines(s string) []string {
+	lines := strings.Split(ansiRe.ReplaceAllString(s, ""), "\n")
+	for i, l := range lines {
+		lines[i] = strings.TrimRight(l, " ")
+	}
+	return lines
+}
 
 func TestRenderDiffLineNumbers(t *testing.T) {
 	d := &gerrit.DiffInfo{
@@ -25,7 +34,7 @@ func TestRenderDiffLineNumbers(t *testing.T) {
 			{AB: []string{"}"}},
 		},
 	}
-	got := strings.Split(ansi.ReplaceAllString(renderDiff("main.go", d, 3, nil, 80).content, ""), "\n")
+	got := plainLines(renderDiff("main.go", d, nil, diffOptions{context: 3, width: 80}).content)
 	want := []string{
 		"main.go modified",
 		"",
@@ -60,7 +69,7 @@ func TestRenderDiffCollapsesUnchangedLines(t *testing.T) {
 			{AB: numbered(21, 30)},
 		},
 	}
-	got := strings.Split(ansi.ReplaceAllString(renderDiff("f", d, 2, nil, 80).content, ""), "\n")
+	got := plainLines(renderDiff("f", d, nil, diffOptions{context: 2, width: 80}).content)
 	want := []string{
 		"f modified",
 		"",
@@ -83,7 +92,7 @@ func TestRenderDiffCollapsesUnchangedLines(t *testing.T) {
 		t.Fatalf("got:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
 	}
 
-	full := ansi.ReplaceAllString(renderDiff("f", d, -1, nil, 80).content, "")
+	full := ansiRe.ReplaceAllString(renderDiff("f", d, nil, diffOptions{context: -1, width: 80}).content, "")
 	if strings.Contains(full, "unchanged") || !strings.Contains(full, "   31    31   l30") {
 		t.Fatalf("full context should render every line:\n%s", full)
 	}
@@ -107,8 +116,8 @@ func TestRenderDiffWithThreads(t *testing.T) {
 		{Comments: []gerrit.CommentInfo{{ID: "p", Line: 21, Side: gerrit.SideParent, Message: "keep old", Author: &gerrit.AccountInfo{Name: "Cy"}}}},
 	}
 
-	r := renderDiff("f", d, 1, threads, 80)
-	lines := strings.Split(ansi.ReplaceAllString(r.content, ""), "\n")
+	r := renderDiff("f", d, threads, diffOptions{context: 1, width: 80})
+	lines := plainLines(r.content)
 	find := func(substr string) int {
 		t.Helper()
 		for i, l := range lines {

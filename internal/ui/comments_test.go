@@ -207,4 +207,16 @@ func TestReviewPublishesDrafts(t *testing.T) {
 	}
 }
 
-var _ tea.Model = App{}
+func keyRunes(s string) tea.KeyMsg {
+	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(s)}
+}
+
+func keyType(name string) tea.KeyMsg {
+	switch name {
+	case "enter":
+		return tea.KeyMsg{Type: tea.KeyEnter}
+	case "esc":
+		return tea.KeyMsg{Type: tea.KeyEsc}
+	}
+	panic("unknown key " + name)
+}
