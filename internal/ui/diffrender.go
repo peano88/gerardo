@@ -283,33 +283,37 @@ func renderDiffLine(l diffLine, spans []span, matches []mark, width int) string 
 }
 
 func renderThread(t gerrit.Thread, width int) []string {
-	barStyle, state := dimStyle, "resolved"
+	barStyle, label := dimStyle, dimStyle.Render("✓ resolved")
 	if t.Unresolved() {
-		barStyle, state = errStyle, "unresolved"
+		barStyle, label = unresolvedSt, unresolvedSt.Bold(true).Render("● unresolved")
 	}
-	indent := strings.Repeat(" ", gutterWidth)
-	bar := indent + barStyle.Render("│") + " "
-	wrap := lipgloss.NewStyle().Width(max(width-gutterWidth-4, 20))
-
 	root := t.Root()
-	header := barStyle.Render(state)
 	if root.Line == 0 {
-		header += dimStyle.Render(" · file comment")
+		label += dimStyle.Render(" · file comment")
 	}
 	if root.PatchSet > 0 {
-		header += dimStyle.Render(fmt.Sprintf(" · PS%d", root.PatchSet))
+		label += dimStyle.Render(fmt.Sprintf(" · PS%d", root.PatchSet))
 	}
+	label += dimStyle.Render(" · " + plural(len(t.Comments), "comment"))
 
-	out := []string{indent + barStyle.Render("╭ ") + header}
-	for _, c := range t.Comments {
+	indent := strings.Repeat(" ", gutterWidth)
+	ruleWidth := max(width-gutterWidth-2, 20)
+	bar := indent + barStyle.Render("│") + " "
+	wrap := lipgloss.NewStyle().Width(max(width-gutterWidth-6, 20))
+
+	out := []string{indent + barStyle.Render("╭─ ") + label + " " + barStyle.Render(strings.Repeat("─", max(ruleWidth-4-lipgloss.Width(label), 0)))}
+	for i, c := range t.Comments {
+		if i > 0 {
+			out = append(out, strings.TrimRight(bar, " "))
+		}
 		author := bar + titleStyle.Render(c.Author.DisplayName()) + " " + dimStyle.Render(c.Updated.Local().Format("2006-01-02 15:04"))
 		if c.Draft {
-			author = bar + draftStyle.Render("DRAFT") + " " + dimStyle.Render("not published yet")
+			author = bar + draftStyle.Render("✎ DRAFT") + " " + dimStyle.Render("not published yet")
 		}
 		out = append(out, author)
 		for l := range strings.SplitSeq(wrap.Render(strings.TrimSpace(c.Message)), "\n") {
 			out = append(out, bar+"  "+l)
 		}
 	}
-	return append(out, indent+barStyle.Render("╰"))
+	return append(out, indent+barStyle.Render("╰"+strings.Repeat("─", ruleWidth-1)))
 }

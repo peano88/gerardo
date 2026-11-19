@@ -142,7 +142,7 @@ func TestRenderDiffWithThreads(t *testing.T) {
 		t.Fatal("file-level thread should be rendered before the diff")
 	}
 
-	want := []int{find("file comment"), find("╭ unresolved"), find("- old") + 1}
+	want := []int{find("file comment"), find("╭─ ● unresolved"), find("- old") + 1}
 	if len(r.threadOffsets) != len(want) {
 		t.Fatalf("got offsets %v, want %v", r.threadOffsets, want)
 	}
