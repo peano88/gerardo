@@ -323,3 +323,17 @@ func TestRenderChangeShowsMessageComments(t *testing.T) {
 		t.Errorf("without the comments the count should stay:\n%s", bare)
 	}
 }
+
+func TestRenderChangeHeader(t *testing.T) {
+	alice := gerrit.AccountInfo{Name: "Alice"}
+	c := &gerrit.ChangeInfo{Number: 7, Subject: "s", Status: "MERGED", Project: "p", Branch: "main",
+		Owner:        gerrit.AccountInfo{Name: "Me"},
+		AttentionSet: map[string]gerrit.AttentionSetInfo{"1": {Account: alice}},
+		Labels: map[string]gerrit.LabelInfo{"Code-Review": {Approved: &alice,
+			All: []gerrit.ApprovalInfo{{AccountInfo: alice, Value: 2}}}}}
+	got := plainLines(renderChange(c, 80, changeView{}))
+	want := []string{" MERGED", "7: s", "p · main", "Me · +0 -0", "● waiting on Alice", "", "Labels", "  ✓  Code-Review  +2 Alice"}
+	if strings.Join(got[:len(want)], "\n") != strings.Join(want, "\n") {
+		t.Fatalf("got:\n%s\nwant:\n%s", strings.Join(got[:len(want)], "\n"), strings.Join(want, "\n"))
+	}
+}

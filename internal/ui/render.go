@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"cmp"
 	"fmt"
 	"regexp"
 	"slices"
@@ -32,6 +33,60 @@ func voteStyle(v int) lipgloss.Style {
 		return addStyle
 	case v < 0:
 		return delStyle
+	default:
+		return dimStyle
+	}
+}
+
+var (
+	newBadge         = badge("12")
+	mergedBadge      = badge("5")
+	abandonedBadge   = badge("8")
+	wipBadge         = badge("3")
+	submittableBadge = badge("2")
+)
+
+func badge(bg string) lipgloss.Style {
+	return lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("0")).Background(lipgloss.Color(bg)).Padding(0, 1)
+}
+
+func changeBadges(c *gerrit.ChangeInfo) string {
+	var badges []string
+	switch c.Status {
+	case "MERGED":
+		badges = append(badges, mergedBadge.Render("MERGED"))
+	case "ABANDONED":
+		badges = append(badges, abandonedBadge.Render("ABANDONED"))
+	default:
+		badges = append(badges, newBadge.Render(cmp.Or(c.Status, "NEW")))
+	}
+	if c.WorkInProgress {
+		badges = append(badges, wipBadge.Render("WIP"))
+	}
+	if c.Submittable {
+		badges = append(badges, submittableBadge.Render("SUBMITTABLE"))
+	}
+	return strings.Join(badges, " ")
+}
+
+// attentionNames lists the accounts in the attention set, sorted.
+func attentionNames(c *gerrit.ChangeInfo) []string {
+	var names []string
+	for _, a := range c.AttentionSet {
+		names = append(names, a.Account.DisplayName())
+	}
+	slices.Sort(names)
+	return names
+}
+
+func fileStatusStyle(status string) lipgloss.Style {
+	switch status {
+	case "A":
+		return addStyle
+	case "D":
+		return delStyle
+	case "R", "C":
+		return numberStyle
 	default:
 		return dimStyle
 	}
@@ -73,44 +128,52 @@ type changeView struct {
 func renderChange(c *gerrit.ChangeInfo, width int, view changeView) string {
 	var b strings.Builder
 
-	status := c.Status
-	if c.WorkInProgress {
-		status += " (WIP)"
-	}
-	if c.Submittable {
-		status += " · submittable"
-	}
-	fmt.Fprintf(&b, "%s\n", titleStyle.Render(fmt.Sprintf("%d: %s", c.Number, c.Subject)))
+	b.WriteString(changeBadges(c) + "\n")
+	b.WriteString(numberStyle.Bold(true).Render(strconv.Itoa(c.Number)+":") + " " + titleStyle.Render(c.Subject) + "\n")
+
 	rev, hasRev := c.Current()
-	fmt.Fprintf(&b, "%s  %s/%s", status, c.Project, c.Branch)
+	where := []string{c.Project, c.Branch}
 	if hasRev {
-		fmt.Fprintf(&b, "  PS%d", rev.Number)
+		where = append(where, fmt.Sprintf("PS%d", rev.Number))
 	}
 	if c.Topic != "" {
-		fmt.Fprintf(&b, "  topic:%s", c.Topic)
+		where = append(where, "topic:"+c.Topic)
 	}
-	fmt.Fprintf(&b, "\nOwner: %s  ·  updated %s ago  ·  %s %s",
-		c.Owner.DisplayName(), relativeTime(c.Updated.Time),
-		addStyle.Render(fmt.Sprintf("+%d", c.Insertions)), delStyle.Render(fmt.Sprintf("-%d", c.Deletions)))
+	b.WriteString(dimStyle.Render(strings.Join(where, " · ")) + "\n")
+
+	facts := []string{c.Owner.DisplayName()}
+	if !c.Updated.IsZero() {
+		facts = append(facts, dimStyle.Render("updated "+relativeTime(c.Updated.Time)+" ago"))
+	}
+	facts = append(facts, addStyle.Render(fmt.Sprintf("+%d", c.Insertions))+" "+delStyle.Render(fmt.Sprintf("-%d", c.Deletions)))
 	if c.UnresolvedCommentCount > 0 {
-		fmt.Fprintf(&b, "  ·  %s", errStyle.Render(fmt.Sprintf("%d unresolved", c.UnresolvedCommentCount)))
+		facts = append(facts, unresolvedSt.Render(fmt.Sprintf("%d unresolved", c.UnresolvedCommentCount)))
 	}
-	b.WriteString("\n")
+	b.WriteString(strings.Join(facts, dimStyle.Render(" · ")) + "\n")
+	if names := attentionNames(c); len(names) > 0 {
+		b.WriteString(attentionDot + " " + dimStyle.Render("waiting on ") + strings.Join(names, ", ") + "\n")
+	}
 
 	b.WriteString(headingStyle.Render("Labels") + "\n")
+	nameWidth := 0
+	for name := range c.Labels {
+		nameWidth = max(nameWidth, ansi.StringWidth(name))
+	}
 	for _, name := range sortedKeys(c.Labels) {
 		label := c.Labels[name]
+		decisive, decisiveStyle := voteCell(label)
 		var votes []string
 		for _, a := range label.All {
 			if a.Value == 0 {
 				continue
 			}
-			votes = append(votes, voteStyle(a.Value).Render(fmt.Sprintf("%+d %s", a.Value, a.DisplayName())))
+			votes = append(votes, voteStyle(a.Value).Render(fmt.Sprintf("%+d", a.Value))+" "+a.DisplayName())
 		}
 		if len(votes) == 0 {
 			votes = []string{dimStyle.Render("no votes")}
 		}
-		fmt.Fprintf(&b, "  %-14s %s\n", name, strings.Join(votes, ", "))
+		fmt.Fprintf(&b, "  %s %s  %s\n", decisiveStyle.Width(2).Render(decisive),
+			lipgloss.NewStyle().Width(nameWidth).Render(name), strings.Join(votes, dimStyle.Render(", ")))
 	}
 
 	if hasRev && rev.Commit != nil {
@@ -128,7 +191,7 @@ func renderChange(c *gerrit.ChangeInfo, width int, view changeView) string {
 			if st == "" {
 				st = "M"
 			}
-			fmt.Fprintf(&b, "  %s %s %s %s\n", st,
+			fmt.Fprintf(&b, "  %s %s %s %s\n", fileStatusStyle(st).Render(st),
 				addStyle.Render(fmt.Sprintf("%+5d", f.LinesInserted)),
 				delStyle.Render(fmt.Sprintf("-%-4d", f.LinesDeleted)), path)
 		}
