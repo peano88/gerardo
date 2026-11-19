@@ -108,7 +108,7 @@ func TestDashboardGroupsOwnChangesFirst(t *testing.T) {
 }
 
 func TestGroupChangesWithoutSelf(t *testing.T) {
-	items := groupChanges([]gerrit.ChangeInfo{{Number: 1}, {Number: 2}}, 0)
+	items := groupChanges([]gerrit.ChangeInfo{{Number: 1}, {Number: 2}}, 0, true)
 	if len(items) != 2 || items[0].change == nil || items[1].change == nil {
 		t.Fatalf("without a known account the changes should be listed flat, got %+v", items)
 	}
@@ -319,5 +319,43 @@ func TestDashboardHidesChangesByPath(t *testing.T) {
 	}
 	if info := ansiRe.ReplaceAllString(d.TitleInfo(), ""); !strings.Contains(info, "showing filtered changes") {
 		t.Fatalf("title bar should tell filtered changes are shown: %q", info)
+	}
+}
+
+func TestDashboardGroupsByProject(t *testing.T) {
+	me := gerrit.AccountInfo{AccountID: 7}
+	d := newDashboard(nil, "is:open")
+	d.SetSize(100, 20)
+	d.Update(changesLoadedMsg{self: &me, changes: []gerrit.ChangeInfo{
+		{Number: 1, Subject: "go 1", Project: "acme/backend"},
+		{Number: 2, Subject: "web", Project: "acme/web"},
+		{Number: 3, Subject: "go 2", Project: "acme/backend"},
+		{Number: 4, Subject: "mine", Project: "acme/web", Owner: me},
+	}})
+	order := func() string {
+		var out []string
+		for _, it := range d.items {
+			if it.change != nil {
+				out = append(out, it.change.Subject)
+			} else {
+				out = append(out, "["+it.header+"]")
+			}
+		}
+		return strings.Join(out, " ")
+	}
+	want := "[▾ My changes (1)] [acme/web · 1] mine [▾ Reviews (3)] [acme/backend · 2] go 1 go 2 [acme/web · 1] web"
+	if got := order(); got != want {
+		t.Fatalf("got  %s\nwant %s", got, want)
+	}
+	if n, _ := d.selected(); n != 4 {
+		t.Fatalf("cursor should skip both headers, got %d", n)
+	}
+	if lines := plainLines(d.View()); !strings.HasPrefix(lines[1], "   ▾ My changes (1) ──") || lines[2] != "     acme/web · 1" {
+		t.Fatalf("both headers should be visible above the first change:\n%s", strings.Join(lines[:4], "\n"))
+	}
+
+	d.Update(keyRunes("p"))
+	if got := order(); got != "[▾ My changes (1)] mine [▾ Reviews (3)] go 1 web go 2" {
+		t.Fatalf("p should ungroup, got %s", got)
 	}
 }

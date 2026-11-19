@@ -9,6 +9,7 @@
 //	style = "catppuccin-mocha"
 //	side_by_side = true
 //	page_size = 50
+//	group_by_project = true
 //	hidden_paths = ["services/accounts"]
 //	visible_paths = [
 //	  "services/accounts/pkg",
@@ -34,6 +35,8 @@ type Config struct {
 	Style      string
 	SideBySide bool
 	PageSize   int
+	// GroupByProject groups the change lists by project.
+	GroupByProject bool
 	// HiddenPaths are patterns of files: the changes touching only files
 	// matching them, and not VisiblePaths, are left out of the change lists.
 	HiddenPaths  []string
@@ -43,10 +46,11 @@ type Config struct {
 // Default returns the settings used when the file does not set them.
 func Default() Config {
 	return Config{
-		URL:      "https://review.example.com",
-		Query:    "is:open (owner:self OR reviewer:self)",
-		Style:    "catppuccin-mocha",
-		PageSize: 50,
+		URL:            "https://review.example.com",
+		Query:          "is:open (owner:self OR reviewer:self)",
+		Style:          "catppuccin-mocha",
+		PageSize:       50,
+		GroupByProject: true,
 	}
 }
 
@@ -139,6 +143,8 @@ func (c *Config) set(key, value string) error {
 		if err == nil && (c.PageSize < 1 || c.PageSize > 500) {
 			err = errors.New("must be between 1 and 500")
 		}
+	case "group_by_project":
+		c.GroupByProject, err = strconv.ParseBool(value)
 	case "hidden_paths":
 		c.HiddenPaths, err = stringList(value)
 	case "visible_paths":

@@ -100,7 +100,7 @@ func (d *dashboard) scroll() {
 		rows++
 	}
 	top, bottom := d.cursor, d.cursor
-	if top > 0 && d.items[top-1].change == nil {
+	for top > 0 && d.items[top-1].change == nil {
 		top--
 	}
 	if d.more && bottom == len(d.items)-1 {
@@ -123,9 +123,12 @@ func (d *dashboard) listView(width int) string {
 	}
 	end := min(len(d.items), d.offset+d.listHeight())
 	for i := d.offset; i < end; i++ {
-		if d.items[i].change == nil {
+		switch {
+		case d.items[i].project:
+			lines = append(lines, projectLine(d.items[i].header))
+		case d.items[i].change == nil:
 			lines = append(lines, sectionLine(d.items[i].header, width))
-		} else {
+		default:
 			lines = append(lines, changeLine(d.items[i].change, cols, i == d.cursor, d.needsAttention(d.items[i].change)))
 		}
 	}
@@ -191,6 +194,11 @@ func (d *dashboard) columnHeader(c dashColumns) string {
 func sectionLine(title string, width int) string {
 	rule := max(width-listGutter-ansi.StringWidth(title)-1, 0)
 	return strings.Repeat(" ", listGutter) + sectionStyle.Render(title) + " " + dimStyle.Render(strings.Repeat("─", rule))
+}
+
+func projectLine(title string) string {
+	name, count, _ := strings.Cut(title, " · ")
+	return strings.Repeat(" ", listGutter+2) + numberStyle.Bold(true).Render(name) + dimStyle.Render(" · "+count)
 }
 
 func changeLine(c *gerrit.ChangeInfo, cols dashColumns, selected, attn bool) string {

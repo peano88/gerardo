@@ -20,6 +20,8 @@ var (
 	SideBySide bool
 	// PageSize is the number of changes fetched per query page.
 	PageSize = 50
+	// GroupByProject groups the change lists by project by default.
+	GroupByProject = true
 )
 
 // span styles the bytes [start, end) of a line.

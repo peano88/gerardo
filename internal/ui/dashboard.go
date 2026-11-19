@@ -38,37 +38,66 @@ type changesLoadedMsg struct {
 	err     error
 }
 
-// dashItem is a dashboard row: a change, or a section header when change is nil.
+// dashItem is a dashboard row: a change, or a header when change is nil,
+// of a section or, when project is set, of the changes of a project.
 type dashItem struct {
-	change *gerrit.ChangeInfo
-	header string
+	change  *gerrit.ChangeInfo
+	header  string
+	project bool
 }
 
 // groupChanges puts the changes owned by selfID first, each group under a
-// header; without a known selfID the changes are listed as they come.
-func groupChanges(changes []gerrit.ChangeInfo, selfID int) []dashItem {
-	var mine, others []dashItem
+// header; without a known selfID the changes are listed as they come. With
+// byProject, the changes of each group are listed by project, in the order
+// of their first change, when there are several projects.
+func groupChanges(changes []gerrit.ChangeInfo, selfID int, byProject bool) []dashItem {
+	var mine, others []*gerrit.ChangeInfo
+	projects := map[string]bool{}
 	for i := range changes {
-		item := dashItem{change: &changes[i]}
+		projects[changes[i].Project] = true
 		if selfID != 0 && changes[i].Owner.AccountID == selfID {
-			mine = append(mine, item)
+			mine = append(mine, &changes[i])
 		} else {
-			others = append(others, item)
+			others = append(others, &changes[i])
+		}
+	}
+	byProject = byProject && len(projects) > 1
+
+	var items []dashItem
+	add := func(title string, list []*gerrit.ChangeInfo) {
+		if len(list) == 0 {
+			return
+		}
+		if title != "" {
+			items = append(items, dashItem{header: fmt.Sprintf("▾ %s (%d)", title, len(list))})
+		}
+		if !byProject {
+			for _, c := range list {
+				items = append(items, dashItem{change: c})
+			}
+			return
+		}
+		var order []string
+		perProject := map[string][]*gerrit.ChangeInfo{}
+		for _, c := range list {
+			if _, ok := perProject[c.Project]; !ok {
+				order = append(order, c.Project)
+			}
+			perProject[c.Project] = append(perProject[c.Project], c)
+		}
+		for _, p := range order {
+			items = append(items, dashItem{header: fmt.Sprintf("%s · %d", p, len(perProject[p])), project: true})
+			for _, c := range perProject[p] {
+				items = append(items, dashItem{change: c})
+			}
 		}
 	}
 	if selfID == 0 {
-		return others
+		add("", others)
+		return items
 	}
-
-	var items []dashItem
-	if len(mine) > 0 {
-		items = append(items, dashItem{header: fmt.Sprintf("▾ My changes (%d)", len(mine))})
-		items = append(items, mine...)
-	}
-	if len(others) > 0 {
-		items = append(items, dashItem{header: fmt.Sprintf("▾ Reviews (%d)", len(others))})
-		items = append(items, others...)
-	}
+	add("My changes", mine)
+	add("Reviews", others)
 	return items
 }
 
@@ -99,6 +128,8 @@ type dashboard struct {
 	err     error
 	// showHidden lists the changes hidden by the path filter too.
 	showHidden bool
+	// byProject groups the changes by project.
+	byProject bool
 	// more is set when further pages match; gen tells stale pages apart.
 	more        bool
 	loadingMore bool
@@ -128,6 +159,7 @@ func newResults(client *gerrit.Client, query string, self *gerrit.AccountInfo, r
 		query:       query,
 		recent:      recent,
 		self:        self,
+		byProject:   GroupByProject,
 		showPreview: true,
 		preview:     viewport.New(0, 0),
 		previews:    map[int]*gerrit.ChangeInfo{},
@@ -168,7 +200,7 @@ func (d *dashboard) listed() ([]gerrit.ChangeInfo, int) {
 func (d *dashboard) relist() {
 	prev, _ := d.selected()
 	listed, _ := d.listed()
-	d.items = groupChanges(listed, d.groupBy())
+	d.items = groupChanges(listed, d.groupBy(), d.byProject)
 	d.selectNumber(prev)
 }
 
@@ -278,6 +310,10 @@ func (d *dashboard) Update(msg tea.Msg) (screen, tea.Cmd) {
 			d.showHidden = !d.showHidden
 			d.relist()
 			return d, tea.Batch(d.schedulePreview(), d.maybeLoadMore())
+		case "p":
+			d.byProject = !d.byProject
+			d.relist()
+			return d, d.schedulePreview()
 		case "P":
 			d.showPreview = !d.showPreview
 			d.layout()
@@ -396,7 +432,11 @@ func (d *dashboard) Title() string {
 }
 
 func (d *dashboard) Status() string {
-	hints := []string{"enter", "open", "/", "search", "y", "copy number"}
+	group := "group by project"
+	if d.byProject {
+		group = "ungroup"
+	}
+	hints := []string{"enter", "open", "/", "search", "p", group, "y", "copy number"}
 	if d.width >= previewMinWidth {
 		hints = append(hints, "J/K", "scroll preview", "P", "toggle preview")
 	}

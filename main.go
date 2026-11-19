@@ -42,7 +42,7 @@ func run() error {
 		flag.PrintDefaults()
 	}
 	flag.Parse()
-	ui.PageSize = cfg.PageSize
+	ui.PageSize, ui.GroupByProject = cfg.PageSize, cfg.GroupByProject
 	ui.SetPathFilter(cfg.HiddenPaths, cfg.VisiblePaths)
 
 	user, password, err := credentials(*baseURL)
