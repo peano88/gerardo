@@ -138,3 +138,71 @@ func TestChangeShowsDraftReplies(t *testing.T) {
 		t.Fatal("the thread should end with the user's draft")
 	}
 }
+
+func TestChangeSubmitAsksFirst(t *testing.T) {
+	var calls []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls = append(calls, r.Method+" "+r.URL.Path)
+		_, _ = w.Write([]byte(")]}'\n{}"))
+	}))
+	defer srv.Close()
+
+	s := loadedChangeScreen(t, gerrit.NewClient(srv.URL, "u", "p"))
+	s.change.Status = "NEW"
+	s.Update(keyRunes("S"))
+	if s.confirm != nil || !strings.Contains(s.Status(), "not submittable") {
+		t.Fatal("a change that is not submittable should not offer to submit")
+	}
+
+	s.change.Submittable = true
+	s.Update(keyRunes("S"))
+	if s.confirm == nil || !strings.Contains(ansiRe.ReplaceAllString(s.View(), ""), "Submit change 42?") {
+		t.Fatalf("S should ask for confirmation:\n%s", s.View())
+	}
+	for _, k := range []tea.KeyMsg{keyRunes("j"), keyRunes("S"), {Type: tea.KeyEnter}} {
+		if _, cmd := s.Update(k); cmd != nil || s.confirm == nil {
+			t.Fatalf("%q should neither submit nor close the dialog", k.String())
+		}
+	}
+	s.Update(keyRunes("n"))
+	if s.confirm != nil || len(calls) != 0 {
+		t.Fatal("n should cancel without submitting")
+	}
+
+	s.Update(keyRunes("S"))
+	_, cmd := s.Update(keyRunes("y"))
+	if s.confirm != nil || cmd == nil {
+		t.Fatal("y should close the dialog and submit")
+	}
+	if msg := cmd().(changeActionMsg); msg.err != nil || msg.notice != "submitted" {
+		t.Fatalf("unexpected result: %+v", msg)
+	}
+	if len(calls) != 1 || calls[0] != "POST /a/changes/42/submit" {
+		t.Fatalf("unexpected calls: %v", calls)
+	}
+}
+
+func TestChangeRebaseOnlyOpenChanges(t *testing.T) {
+	s := loadedChangeScreen(t, nil)
+	s.change.Status = "MERGED"
+	s.Update(keyRunes("R"))
+	if s.confirm != nil {
+		t.Fatal("a merged change should not be rebased")
+	}
+	s.change.Status = "NEW"
+	s.Update(keyRunes("R"))
+	if s.confirm == nil || !strings.Contains(strings.Join(s.confirm.details, " "), "uploading patch set 4") {
+		t.Fatalf("R should ask before rebasing, got %+v", s.confirm)
+	}
+	if _, cmd := s.Update(tea.KeyMsg{Type: tea.KeyEsc}); cmd != nil || s.confirm != nil {
+		t.Fatal("esc should cancel the rebase")
+	}
+}
+
+func TestOverlayCentersBox(t *testing.T) {
+	bg := strings.Repeat("..........\n", 5) + ".........."
+	got := strings.Split(overlay(bg, "ab\ncd", 10, 6), "\n")
+	if ansiRe.ReplaceAllString(got[2], "") != "....ab...." || ansiRe.ReplaceAllString(got[3], "") != "....cd...." {
+		t.Fatalf("got:\n%s", strings.Join(got, "\n"))
+	}
+}

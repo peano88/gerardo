@@ -174,6 +174,22 @@ func (c *Client) Self(ctx context.Context) (*AccountInfo, error) {
 	return &account, nil
 }
 
+// Submit merges a change into its branch.
+func (c *Client) Submit(ctx context.Context, change string) error {
+	if err := c.do(ctx, http.MethodPost, "/changes/"+url.PathEscape(change)+"/submit", struct{}{}, nil); err != nil {
+		return fmt.Errorf("submit: %w", err)
+	}
+	return nil
+}
+
+// Rebase rebases the current patch set of a change onto the tip of its branch.
+func (c *Client) Rebase(ctx context.Context, change string) error {
+	if err := c.do(ctx, http.MethodPost, "/changes/"+url.PathEscape(change)+"/rebase", struct{}{}, nil); err != nil {
+		return fmt.Errorf("rebase: %w", err)
+	}
+	return nil
+}
+
 // SetReview posts votes and a message on a revision.
 func (c *Client) SetReview(ctx context.Context, change, revision string, review ReviewInput) error {
 	p := fmt.Sprintf("/changes/%s/revisions/%s/review", url.PathEscape(change), url.PathEscape(revision))

@@ -43,6 +43,14 @@ type changeScreen struct {
 	// the shown comments, in order.
 	selected  string
 	positions []commentPos
+
+	// confirm is the open confirmation dialog, if any.
+	confirm *confirmation
+}
+
+type changeActionMsg struct {
+	notice string
+	err    error
 }
 
 func newChangeScreen(client *gerrit.Client, number int) *changeScreen {
@@ -71,8 +79,26 @@ func (s *changeScreen) Init() tea.Cmd {
 }
 
 func (s *changeScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
+	if key, ok := msg.(tea.KeyMsg); ok && s.confirm != nil {
+		done, cmd := s.confirm.update(key)
+		if done {
+			s.confirm = nil
+			if cmd != nil {
+				s.loading = true
+			}
+		}
+		return s, cmd
+	}
 	s.notice.update(msg)
 	switch msg := msg.(type) {
+	case changeActionMsg:
+		s.loading = false
+		s.notice = notice{text: msg.notice, err: msg.err}
+		if msg.err != nil {
+			return s, nil
+		}
+		return s, s.Init()
+
 	case copiedMsg:
 		return s, nil
 
@@ -136,6 +162,12 @@ func (s *changeScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
 				return s, s.reply()
 			}
 			return s, s.Init()
+		case "S":
+			s.askSubmit()
+			return s, nil
+		case "R":
+			s.askRebase()
+			return s, nil
 		case "A":
 			return s, s.quickReply("Ack")
 		case "D":
@@ -322,7 +354,55 @@ func (s *changeScreen) openThread() tea.Cmd {
 	return push(d)
 }
 
+func (s *changeScreen) askSubmit() {
+	c := s.change
+	switch {
+	case c == nil:
+	case c.Status != "NEW":
+		s.notice = notice{text: "only open changes can be submitted"}
+	case !c.Submittable:
+		s.notice = notice{text: "the change is not submittable yet: check its votes and requirements"}
+	default:
+		s.confirm = &confirmation{
+			title:   fmt.Sprintf("Submit change %d?", c.Number),
+			details: []string{c.Subject, dimStyle.Render(c.Project + " · " + c.Branch), "", "This merges the change into " + c.Branch + "."},
+			verb:    "submit",
+			run:     s.action("submitted", func(ctx context.Context, n string) error { return s.client.Submit(ctx, n) }),
+		}
+	}
+}
+
+func (s *changeScreen) askRebase() {
+	c := s.change
+	switch {
+	case c == nil:
+	case c.Status != "NEW":
+		s.notice = notice{text: "only open changes can be rebased"}
+	default:
+		rev, _ := c.Current()
+		s.confirm = &confirmation{
+			title:   fmt.Sprintf("Rebase change %d?", c.Number),
+			details: []string{c.Subject, dimStyle.Render(c.Project + " · " + c.Branch), "", fmt.Sprintf("This rebases patch set %d onto the tip of %s, uploading patch set %d.", rev.Number, c.Branch, rev.Number+1)},
+			verb:    "rebase",
+			run:     s.action("rebased", func(ctx context.Context, n string) error { return s.client.Rebase(ctx, n) }),
+		}
+	}
+}
+
+// action runs a change operation, reporting it with notice once done.
+func (s *changeScreen) action(notice string, do func(ctx context.Context, number string) error) tea.Cmd {
+	number := strconv.Itoa(s.number)
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		defer cancel()
+		return changeActionMsg{notice: notice, err: do(ctx, number)}
+	}
+}
+
 func (s *changeScreen) View() string {
+	if s.confirm != nil {
+		return overlay(s.viewport.View(), s.confirm.view(s.viewport.Width), s.viewport.Width, s.viewport.Height)
+	}
 	return s.viewport.View()
 }
 
@@ -331,6 +411,9 @@ func (s *changeScreen) Title() string {
 }
 
 func (s *changeScreen) Status() string {
+	if s.confirm != nil {
+		return keyHints("y", s.confirm.verb, "n/esc", "cancel")
+	}
 	var hints string
 	if t, ok := s.threads[s.selected]; ok {
 		open := "open in diff"
@@ -340,9 +423,20 @@ func (s *changeScreen) Status() string {
 		hints = keyHints("]/[", "comment", "enter", open, "r", "reply", "A/D", "ack/done", "v", "publish", "esc", "unselect")
 	} else {
 		hints = dimStyle.Render(fmt.Sprintf("%3.0f%%", s.viewport.ScrollPercent()*100)) + "   " +
-			keyHints("]/[", "comments", "f", "files", "v", "vote", "m", s.messagesHint(), "y", "copy number", "r", "reload", "esc", "back")
+			keyHints(s.actionHints()...)
 	}
 	return s.notice.status(s.loading, s.err, hints)
+}
+
+func (s *changeScreen) actionHints() []string {
+	hints := []string{"]/[", "comments", "f", "files", "v", "vote"}
+	if s.change != nil && s.change.Status == "NEW" {
+		if s.change.Submittable {
+			hints = append(hints, "S", "submit")
+		}
+		hints = append(hints, "R", "rebase")
+	}
+	return append(hints, "m", s.messagesHint(), "y", "copy number", "r", "reload", "esc", "back")
 }
 
 func (s *changeScreen) messagesHint() string {

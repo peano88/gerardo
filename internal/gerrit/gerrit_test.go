@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -195,5 +196,30 @@ func TestSuggestAccounts(t *testing.T) {
 	}
 	if len(accounts) != 1 || accounts[0].Username != "bob" {
 		t.Fatalf("unexpected accounts: %+v", accounts)
+	}
+}
+
+func TestSubmitAndRebase(t *testing.T) {
+	var calls []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls = append(calls, r.Method+" "+r.URL.Path)
+		if strings.HasSuffix(r.URL.Path, "/rebase") {
+			http.Error(w, "change is already up to date", http.StatusConflict)
+			return
+		}
+		_, _ = w.Write([]byte(")]}'\n{}"))
+	}))
+	defer srv.Close()
+
+	c := NewClient(srv.URL, "u", "p")
+	if err := c.Submit(context.Background(), "42"); err != nil {
+		t.Fatal(err)
+	}
+	err := c.Rebase(context.Background(), "42")
+	if err == nil || !strings.Contains(err.Error(), "already up to date") {
+		t.Fatalf("rebase should report the server's reason, got %v", err)
+	}
+	if strings.Join(calls, ", ") != "POST /a/changes/42/submit, POST /a/changes/42/rebase" {
+		t.Fatalf("unexpected calls: %v", calls)
 	}
 }
