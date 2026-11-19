@@ -40,7 +40,7 @@ func (s *helpScreen) Title() string {
 }
 
 func (s *helpScreen) Status() string {
-	return status(false, nil, s.title+" · esc close")
+	return status(false, nil, keyHints("↑/↓", "scroll", "esc", "close"))
 }
 
 func (s *helpScreen) SetSize(width, height int) {

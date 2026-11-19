@@ -279,9 +279,9 @@ func (s *reviewScreen) Title() string {
 }
 
 func (s *reviewScreen) Status() string {
-	help := "↑/↓ label · ←/→ vote · tab message · ctrl+s send · esc cancel"
+	help := keyHints("↑/↓", "label", "←/→", "vote", "tab", "message", "ctrl+s", "send", "esc", "cancel")
 	if s.editing {
-		help = "tab/esc back to votes · ctrl+s send"
+		help = keyHints("tab/esc", "back to votes", "ctrl+s", "send")
 	}
 	return status(s.sending || (!s.ready && s.err == nil), s.err, help)
 }
