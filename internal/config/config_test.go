@@ -46,26 +46,26 @@ func TestLoadMissingFile(t *testing.T) {
 }
 
 func TestLoadErrors(t *testing.T) {
-	for _, content := range []string{
-		"url = https://unquoted",
-		"colour = \"blue\"",
-		"side_by_side = maybe",
-		"page_size = 0",
-		"just words",
-		`hidden_paths = "accounts/*"`,
-		`hidden_paths = [accounts/*]`,
-		"hidden_paths = [\n\"a\",",
+	for content, want := range map[string]string{
+		"url = https://unquoted":      `line 1 (last key "url")`,
+		"colour = \"blue\"":           "unknown setting colour",
+		"side_by_side = maybe":        `line 1 (last key "side_by_side")`,
+		"page_size = 0":               "page_size: must be between 1 and 500",
+		"just words":                  "line 1",
+		`hidden_paths = "accounts/*"`: "incompatible types",
+		`hidden_paths = [accounts/*]`: `line 1 (last key "hidden_paths")`,
+		"hidden_paths = [\n\"a\",":    "line 2",
 	} {
 		_, err := parseString(content)
-		if err == nil || !strings.Contains(err.Error(), "line 1") {
-			t.Errorf("%q: want an error on line 1, got %v", content, err)
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%q: want an error with %q, got %v", content, want, err)
 		}
 	}
 }
 
 func parseString(s string) (Config, error) {
 	c := Default()
-	return c, parse(strings.NewReader(s), &c)
+	return c, parse(s, &c)
 }
 
 func TestPath(t *testing.T) {

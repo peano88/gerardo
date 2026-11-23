@@ -14,7 +14,7 @@ buildGoModule {
     ];
   };
 
-  vendorHash = "sha256-Y2rSFE0Niwbf6q5UsWIpLptl+ZJHwumlDWtVYf8gFDE=";
+  vendorHash = "sha256-A3yvAAGermm4vdR7R3dkBqb0eCLrYflypv1Ab8bXM/s=";
 
   ldflags = [
     "-s"

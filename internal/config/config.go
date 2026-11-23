@@ -1,8 +1,4 @@
-// Package config reads the gerardo configuration file.
-//
-// The file holds `key = value` lines, a subset of TOML: strings are quoted,
-// booleans and integers are bare, lists of strings are in brackets and may
-// span lines, and # starts a comment.
+// Package config reads the gerardo configuration file, in TOML.
 //
 //	url = "https://review.example.com"
 //	query = "is:open (owner:self OR reviewer:self)"
@@ -18,29 +14,28 @@
 package config
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
+
+	"github.com/BurntSushi/toml"
 )
 
 // Config holds the settings of gerardo.
 type Config struct {
-	URL        string
-	Query      string
-	Style      string
-	SideBySide bool
-	PageSize   int
+	URL        string `toml:"url"`
+	Query      string `toml:"query"`
+	Style      string `toml:"style"`
+	SideBySide bool   `toml:"side_by_side"`
+	PageSize   int    `toml:"page_size"`
 	// GroupByProject groups the change lists by project.
-	GroupByProject bool
+	GroupByProject bool `toml:"group_by_project"`
 	// HiddenPaths are patterns of files: the changes touching only files
 	// matching them, and not VisiblePaths, are left out of the change lists.
-	HiddenPaths  []string
-	VisiblePaths []string
+	HiddenPaths  []string `toml:"hidden_paths"`
+	VisiblePaths []string `toml:"visible_paths"`
 }
 
 // Default returns the settings used when the file does not set them.
@@ -69,115 +64,34 @@ func Path() (string, error) {
 // Load reads the file at path over the defaults; a missing file is no error.
 func Load(path string) (Config, error) {
 	c := Default()
-	f, err := os.Open(path)
+	b, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return c, nil
 	}
 	if err != nil {
 		return c, err
 	}
-	defer f.Close()
-	if err := parse(f, &c); err != nil {
+	if err := parse(string(b), &c); err != nil {
 		return c, fmt.Errorf("%s: %w", path, err)
 	}
 	return c, nil
 }
 
-func parse(r io.Reader, c *Config) error {
-	sc := bufio.NewScanner(r)
-	for n := 1; sc.Scan(); n++ {
-		line := strings.TrimSpace(sc.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		key, value, ok := strings.Cut(line, "=")
-		if !ok {
-			return fmt.Errorf("line %d: expected key = value", n)
-		}
-		start := n
-		key, value = strings.TrimSpace(key), stripComment(strings.TrimSpace(value))
-		// A list continues until its closing bracket.
-		for strings.HasPrefix(value, "[") && !strings.HasSuffix(value, "]") {
-			if !sc.Scan() {
-				return fmt.Errorf("line %d: %s: unterminated list", start, key)
-			}
-			n++
-			if next := stripComment(strings.TrimSpace(sc.Text())); next != "" {
-				value += " " + next
-			}
-		}
-		if err := c.set(key, value); err != nil {
-			return fmt.Errorf("line %d: %s: %w", start, key, err)
-		}
-	}
-	return sc.Err()
-}
-
-// stripComment removes a trailing comment, outside of a quoted string.
-func stripComment(value string) string {
-	if strings.HasPrefix(value, `"`) {
-		if end := strings.LastIndex(value, `"`); end > 0 {
-			rest, _, _ := strings.Cut(value[end+1:], "#")
-			return value[:end+1] + strings.TrimSpace(rest)
-		}
-		return value
-	}
-	v, _, _ := strings.Cut(value, "#")
-	return strings.TrimSpace(v)
-}
-
-func (c *Config) set(key, value string) error {
-	var err error
-	switch key {
-	case "url":
-		c.URL, err = unquote(value)
-	case "query":
-		c.Query, err = unquote(value)
-	case "style":
-		c.Style, err = unquote(value)
-	case "side_by_side":
-		c.SideBySide, err = strconv.ParseBool(value)
-	case "page_size":
-		c.PageSize, err = strconv.Atoi(value)
-		if err == nil && (c.PageSize < 1 || c.PageSize > 500) {
-			err = errors.New("must be between 1 and 500")
-		}
-	case "group_by_project":
-		c.GroupByProject, err = strconv.ParseBool(value)
-	case "hidden_paths":
-		c.HiddenPaths, err = stringList(value)
-	case "visible_paths":
-		c.VisiblePaths, err = stringList(value)
-	default:
-		err = errors.New("unknown setting")
-	}
-	return err
-}
-
-// stringList parses a list of quoted strings, such as ["a", "b",].
-func stringList(value string) ([]string, error) {
-	if !strings.HasPrefix(value, "[") || !strings.HasSuffix(value, "]") {
-		return nil, errors.New("expected a list of quoted strings")
-	}
-	var list []string
-	for _, item := range strings.Split(value[1:len(value)-1], ",") {
-		item = strings.TrimSpace(item)
-		if item == "" {
-			continue
-		}
-		s, err := unquote(item)
-		if err != nil || s == "" {
-			return nil, errors.New("expected a list of quoted strings")
-		}
-		list = append(list, s)
-	}
-	return list, nil
-}
-
-func unquote(value string) (string, error) {
-	s, err := strconv.Unquote(value)
+// parse reads the settings of a file over c, rejecting unknown ones.
+func parse(content string, c *Config) error {
+	md, err := toml.Decode(content, c)
 	if err != nil {
-		return "", errors.New("expected a quoted string")
+		return err
 	}
-	return s, nil
+	if undecoded := md.Undecoded(); len(undecoded) > 0 {
+		keys := make([]string, len(undecoded))
+		for i, k := range undecoded {
+			keys[i] = k.String()
+		}
+		return fmt.Errorf("unknown setting %s", strings.Join(keys, ", "))
+	}
+	if c.PageSize < 1 || c.PageSize > 500 {
+		return errors.New("page_size: must be between 1 and 500")
+	}
+	return nil
 }
