@@ -46,7 +46,6 @@ type Config struct {
 // Default returns the settings used when the file does not set them.
 func Default() Config {
 	return Config{
-		URL:            "https://review.example.com",
 		Query:          "is:open (owner:self OR reviewer:self)",
 		Style:          "catppuccin-mocha",
 		PageSize:       50,

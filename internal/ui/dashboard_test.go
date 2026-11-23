@@ -252,14 +252,14 @@ func TestPathFilter(t *testing.T) {
 	SetPathFilter([]string{"services/accounts", "legacy/*.go"}, []string{"services/accounts/pkg", "services/accounts/bill?ng/"})
 	t.Cleanup(func() { SetPathFilter(nil, nil) })
 	for path, hidden := range map[string]bool{
-		"services/accounts/api/main.go":    true,
-		"services/accounts":                true,
-		"services/accountsx/main.go":       false,
-		"services/accounts/pkg/x/y.go":     false,
+		"services/accounts/api/main.go":  true,
+		"services/accounts":              true,
+		"services/accountsx/main.go":     false,
+		"services/accounts/pkg/x/y.go":   false,
 		"services/accounts/billing/x.go": false,
-		"services/payments/main.go":         false,
-		"legacy/a/b.go":                   true,
-		"legacy/README.md":                false,
+		"services/payments/main.go":      false,
+		"legacy/a/b.go":                  true,
+		"legacy/README.md":               false,
 	} {
 		if got := paths.hidesPath(path); got != hidden {
 			t.Errorf("%s: hidden %v, want %v", path, got, hidden)
@@ -296,7 +296,7 @@ func TestDashboardHidesChangesByPath(t *testing.T) {
 
 	d.Update(changesLoadedMsg{gen: d.gen, changes: []gerrit.ChangeInfo{
 		{Number: 1, Subject: "accounts only", CurrentRevision: "r", Revisions: files("services/accounts/api/a.go")},
-		{Number: 2, Subject: "accounts and payment", CurrentRevision: "r", Revisions: files("services/accounts/api/a.go", "services/payments/b.go")},
+		{Number: 2, Subject: "accounts and payments", CurrentRevision: "r", Revisions: files("services/accounts/api/a.go", "services/payments/b.go")},
 		{Number: 3, Subject: "accounts pkg", CurrentRevision: "r", Revisions: files("services/accounts/pkg/c.go")},
 	}})
 	numbers := func() []int {
@@ -327,9 +327,9 @@ func TestDashboardGroupsByProject(t *testing.T) {
 	d := newDashboard(nil, "is:open")
 	d.SetSize(100, 20)
 	d.Update(changesLoadedMsg{self: &me, changes: []gerrit.ChangeInfo{
-		{Number: 1, Subject: "go 1", Project: "acme/backend"},
+		{Number: 1, Subject: "backend 1", Project: "acme/backend"},
 		{Number: 2, Subject: "web", Project: "acme/web"},
-		{Number: 3, Subject: "go 2", Project: "acme/backend"},
+		{Number: 3, Subject: "backend 2", Project: "acme/backend"},
 		{Number: 4, Subject: "mine", Project: "acme/web", Owner: me},
 	}})
 	order := func() string {
@@ -343,7 +343,7 @@ func TestDashboardGroupsByProject(t *testing.T) {
 		}
 		return strings.Join(out, " ")
 	}
-	want := "[▾ My changes (1)] [acme/web · 1] mine [▾ Reviews (3)] [acme/backend · 2] go 1 go 2 [acme/web · 1] web"
+	want := "[▾ My changes (1)] [acme/web · 1] mine [▾ Reviews (3)] [acme/backend · 2] backend 1 backend 2 [acme/web · 1] web"
 	if got := order(); got != want {
 		t.Fatalf("got  %s\nwant %s", got, want)
 	}
@@ -355,7 +355,7 @@ func TestDashboardGroupsByProject(t *testing.T) {
 	}
 
 	d.Update(keyRunes("p"))
-	if got := order(); got != "[▾ My changes (1)] mine [▾ Reviews (3)] go 1 web go 2" {
+	if got := order(); got != "[▾ My changes (1)] mine [▾ Reviews (3)] backend 1 web backend 2" {
 		t.Fatalf("p should ungroup, got %s", got)
 	}
 }

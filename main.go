@@ -44,6 +44,9 @@ func run() error {
 	flag.Parse()
 	ui.PageSize, ui.GroupByProject = cfg.PageSize, cfg.GroupByProject
 	ui.SetPathFilter(cfg.HiddenPaths, cfg.VisiblePaths)
+	if *baseURL == "" {
+		return fmt.Errorf("no Gerrit server: set url = \"https://review.example.com\" in %s, GERRIT_URL or -url", configPath)
+	}
 
 	user, password, err := credentials(*baseURL)
 	if err != nil {
