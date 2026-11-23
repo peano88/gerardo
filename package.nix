@@ -1,7 +1,7 @@
 { lib, buildGoModule }:
 
 buildGoModule {
-  pname = "gerrit-tui";
+  pname = "gerardo";
   version = "0.1.0";
 
   src = lib.fileset.toSource {
@@ -26,6 +26,6 @@ buildGoModule {
 
   meta = {
     description = "Terminal client for reviewing Gerrit changes";
-    mainProgram = "gerrit-tui";
+    mainProgram = "gerardo";
   };
 }

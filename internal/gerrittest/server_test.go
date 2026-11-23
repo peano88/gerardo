@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/peano88/gerrit-tui/internal/gerrit"
+	"github.com/peano88/gerardo/internal/gerrit"
 )
 
 var demoNow = time.Date(2026, 3, 2, 10, 0, 0, 0, time.UTC)

@@ -1,19 +1,19 @@
-# gerrit-tui
+# gerardo
 
 A terminal client for reviewing [Gerrit](https://www.gerritcodereview.com/) changes: dashboard with preview, diffs (unified or side by side) between any two patch sets, inline comments, votes, submit and rebase.
 
-Try it without a server: `gerrit-tui -demo`.
+Try it without a server: `gerardo -demo`.
 
 ## Install
 
 ```sh
-go build -o gerrit-tui .   # Go 1.26.8+
+go build -o gerardo .   # Go 1.26.8+
 nix build                  # or with Nix; the flake also has an overlay
 ```
 
 ## Configure
 
-`~/.config/gerrit-tui/config.toml` (flags and `GERRIT_URL` override it):
+`~/.config/gerardo/config.toml` (flags and `GERRIT_URL` override it):
 
 ```toml
 url = "https://review.example.com"

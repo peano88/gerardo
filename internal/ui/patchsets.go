@@ -9,7 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/peano88/gerrit-tui/internal/gerrit"
+	"github.com/peano88/gerardo/internal/gerrit"
 )
 
 // patchRange is what a diff compares: patch set target against base, a

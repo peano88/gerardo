@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/peano88/gerrit-tui/internal/gerrit"
+	"github.com/peano88/gerardo/internal/gerrit"
 )
 
 // pathFilter hides the changes whose files all match a hidden pattern and no

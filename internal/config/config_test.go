@@ -10,7 +10,7 @@ import (
 
 func TestLoad(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.toml")
-	content := `# gerrit-tui
+	content := `# gerardo
 url = "https://review.example.com"  # the server
 query = "status:open #tag"
 side_by_side = true
@@ -70,7 +70,7 @@ func parseString(s string) (Config, error) {
 
 func TestPath(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", "/xdg")
-	if p, _ := Path(); p != "/xdg/gerrit-tui/config.toml" {
+	if p, _ := Path(); p != "/xdg/gerardo/config.toml" {
 		t.Fatalf("got %q", p)
 	}
 }

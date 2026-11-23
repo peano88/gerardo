@@ -11,7 +11,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/peano88/gerrit-tui/internal/gerrit"
+	"github.com/peano88/gerardo/internal/gerrit"
 )
 
 type changeLoadedMsg struct {

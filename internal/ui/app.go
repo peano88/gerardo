@@ -1,4 +1,4 @@
-// Package ui implements the terminal screens of gerrit-tui.
+// Package ui implements the terminal screens of gerardo.
 package ui
 
 import (
@@ -10,7 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/peano88/gerrit-tui/internal/gerrit"
+	"github.com/peano88/gerardo/internal/gerrit"
 )
 
 const requestTimeout = 20 * time.Second
@@ -118,7 +118,7 @@ func (a App) titleBar() string {
 			crumbs = append(crumbs, dimStyle.Render(s.Title()))
 		}
 	}
-	left := badgeStyle.Render("gerrit") + " "
+	left := badgeStyle.Render("gerardo") + " "
 	if a.host != "" {
 		left += dimStyle.Render(a.host) + crumbSep
 	}

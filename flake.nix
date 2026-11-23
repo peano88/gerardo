@@ -1,5 +1,5 @@
 {
-  description = "gerrit-tui, a terminal client for reviewing Gerrit changes";
+  description = "gerardo, a terminal client for reviewing Gerrit changes";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
@@ -16,24 +16,24 @@
     in
     {
       packages = forAllSystems (pkgs: {
-        gerrit-tui = pkgs.callPackage ./package.nix { };
-        default = self.packages.${pkgs.stdenv.hostPlatform.system}.gerrit-tui;
+        gerardo = pkgs.callPackage ./package.nix { };
+        default = self.packages.${pkgs.stdenv.hostPlatform.system}.gerardo;
       });
 
       overlays.default = final: _prev: {
-        gerrit-tui = final.callPackage ./package.nix { };
+        gerardo = final.callPackage ./package.nix { };
       };
 
       apps = forAllSystems (pkgs: {
         default = {
           type = "app";
-          program = nixpkgs.lib.getExe self.packages.${pkgs.stdenv.hostPlatform.system}.gerrit-tui;
+          program = nixpkgs.lib.getExe self.packages.${pkgs.stdenv.hostPlatform.system}.gerardo;
         };
       });
 
       devShells = forAllSystems (pkgs: {
         default = pkgs.mkShell {
-          inputsFrom = [ self.packages.${pkgs.stdenv.hostPlatform.system}.gerrit-tui ];
+          inputsFrom = [ self.packages.${pkgs.stdenv.hostPlatform.system}.gerardo ];
           packages = [ pkgs.gopls ];
         };
       });

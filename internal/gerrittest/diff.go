@@ -3,7 +3,7 @@ package gerrittest
 import (
 	"strings"
 
-	"github.com/peano88/gerrit-tui/internal/gerrit"
+	"github.com/peano88/gerardo/internal/gerrit"
 )
 
 // splitLines splits a file into its lines, without a trailing empty line.

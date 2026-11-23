@@ -1,4 +1,4 @@
-module github.com/peano88/gerrit-tui
+module github.com/peano88/gerardo
 
 go 1.26.8
 

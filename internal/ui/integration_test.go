@@ -8,8 +8,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/peano88/gerrit-tui/internal/gerrit"
-	"github.com/peano88/gerrit-tui/internal/gerrittest"
+	"github.com/peano88/gerardo/internal/gerrit"
+	"github.com/peano88/gerardo/internal/gerrittest"
 )
 
 // driver runs the app against a fake Gerrit server, running every command

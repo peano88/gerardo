@@ -1,5 +1,5 @@
 // Package gerrittest is a fake Gerrit server, holding changes in memory and
-// serving the part of the REST API gerrit-tui uses. It backs integration
+// serving the part of the REST API gerardo uses. It backs integration
 // tests and the demo mode.
 //
 // Patch sets hold the content of the files they change, so that file lists
@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/peano88/gerrit-tui/internal/gerrit"
+	"github.com/peano88/gerardo/internal/gerrit"
 )
 
 // Deleted, as the content of a file in a patch set, deletes the file.

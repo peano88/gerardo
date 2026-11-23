@@ -1,4 +1,4 @@
-// Package config reads the gerrit-tui configuration file.
+// Package config reads the gerardo configuration file.
 //
 // The file holds `key = value` lines, a subset of TOML: strings are quoted,
 // booleans and integers are bare, lists of strings are in brackets and may
@@ -28,7 +28,7 @@ import (
 	"strings"
 )
 
-// Config holds the settings of gerrit-tui.
+// Config holds the settings of gerardo.
 type Config struct {
 	URL        string
 	Query      string
@@ -63,7 +63,7 @@ func Path() (string, error) {
 		}
 		dir = filepath.Join(home, ".config")
 	}
-	return filepath.Join(dir, "gerrit-tui", "config.toml"), nil
+	return filepath.Join(dir, "gerardo", "config.toml"), nil
 }
 
 // Load reads the file at path over the defaults; a missing file is no error.

@@ -1,4 +1,4 @@
-// Command gerrit-tui is a terminal client for reviewing Gerrit changes.
+// Command gerardo is a terminal client for reviewing Gerrit changes.
 package main
 
 import (
@@ -12,15 +12,15 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/peano88/gerrit-tui/internal/config"
-	"github.com/peano88/gerrit-tui/internal/gerrit"
-	"github.com/peano88/gerrit-tui/internal/gerrittest"
-	"github.com/peano88/gerrit-tui/internal/ui"
+	"github.com/peano88/gerardo/internal/config"
+	"github.com/peano88/gerardo/internal/gerrit"
+	"github.com/peano88/gerardo/internal/gerrittest"
+	"github.com/peano88/gerardo/internal/ui"
 )
 
 func main() {
 	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, "gerrit-tui:", err)
+		fmt.Fprintln(os.Stderr, "gerardo:", err)
 		os.Exit(1)
 	}
 }
@@ -37,11 +37,11 @@ func run() error {
 
 	baseURL := flag.String("url", envOr("GERRIT_URL", cfg.URL), "Gerrit server URL")
 	query := flag.String("q", cfg.Query, "Gerrit search query for the dashboard")
-	flag.StringVar(&ui.SyntaxStyle, "style", envOr("GERRIT_TUI_STYLE", cfg.Style), "chroma style used to highlight diffs")
+	flag.StringVar(&ui.SyntaxStyle, "style", envOr("GERARDO_STYLE", cfg.Style), "chroma style used to highlight diffs")
 	flag.BoolVar(&ui.SideBySide, "side-by-side", cfg.SideBySide, "show diffs side by side")
 	demo := flag.Bool("demo", false, "explore made-up changes served by a built-in fake Gerrit server")
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "Usage: gerrit-tui [flags]\n\nFlags override the environment, which overrides %s.\n\n", configPath)
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage: gerardo [flags]\n\nFlags override the environment, which overrides %s.\n\n", configPath)
 		flag.PrintDefaults()
 	}
 	flag.Parse()

@@ -9,7 +9,7 @@ import (
 	"github.com/alecthomas/chroma/v2/styles"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/peano88/gerrit-tui/internal/gerrit"
+	"github.com/peano88/gerardo/internal/gerrit"
 )
 
 // Settings applying to every screen, set before the program starts.

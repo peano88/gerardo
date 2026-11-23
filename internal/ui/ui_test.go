@@ -10,7 +10,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/peano88/gerrit-tui/internal/gerrit"
+	"github.com/peano88/gerardo/internal/gerrit"
 )
 
 var ansiRe = regexp.MustCompile(`\x1b\[[0-9;]*m`)
@@ -233,12 +233,12 @@ func TestAppNavigation(t *testing.T) {
 	title := func() string { return plainLines(app.View())[0] }
 
 	app, _ = app.Update(pushMsg{screen: &stubScreen{name: "child"}})
-	if body() != "child" || title() != " gerrit  root › child" {
+	if body() != "child" || title() != " gerardo  root › child" {
 		t.Fatalf("after push: got title %q, body %q", title(), body())
 	}
 
 	app, cmd := app.Update(popMsg{})
-	if body() != "root" || title() != " gerrit  root" {
+	if body() != "root" || title() != " gerardo  root" {
 		t.Fatalf("after pop: got title %q, body %q", title(), body())
 	}
 	if _, ok := cmd().(focusMsg); !ok {
