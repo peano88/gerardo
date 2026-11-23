@@ -14,6 +14,14 @@ type Timestamp struct {
 	time.Time
 }
 
+// MarshalJSON formats the time in the Gerrit timestamp format.
+func (t Timestamp) MarshalJSON() ([]byte, error) {
+	if t.IsZero() {
+		return []byte("null"), nil
+	}
+	return []byte(`"` + t.UTC().Format(timestampLayout) + `"`), nil
+}
+
 // UnmarshalJSON parses the Gerrit timestamp format.
 func (t *Timestamp) UnmarshalJSON(b []byte) error {
 	s := strings.Trim(string(b), `"`)
