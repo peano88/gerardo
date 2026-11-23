@@ -8,11 +8,13 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/peano88/gerrit-tui/internal/config"
 	"github.com/peano88/gerrit-tui/internal/gerrit"
+	"github.com/peano88/gerrit-tui/internal/gerrittest"
 	"github.com/peano88/gerrit-tui/internal/ui"
 )
 
@@ -37,12 +39,23 @@ func run() error {
 	query := flag.String("q", cfg.Query, "Gerrit search query for the dashboard")
 	flag.StringVar(&ui.SyntaxStyle, "style", envOr("GERRIT_TUI_STYLE", cfg.Style), "chroma style used to highlight diffs")
 	flag.BoolVar(&ui.SideBySide, "side-by-side", cfg.SideBySide, "show diffs side by side")
+	demo := flag.Bool("demo", false, "explore made-up changes served by a built-in fake Gerrit server")
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage: gerrit-tui [flags]\n\nFlags override the environment, which overrides %s.\n\n", configPath)
 		flag.PrintDefaults()
 	}
 	flag.Parse()
 	ui.PageSize, ui.GroupByProject = cfg.PageSize, cfg.GroupByProject
+	if *demo {
+		// The settings of a real server could hide the demo changes.
+		demoQuery := config.Default().Query
+		flag.Visit(func(f *flag.Flag) {
+			if f.Name == "q" {
+				demoQuery = *query
+			}
+		})
+		return runDemo(demoQuery)
+	}
 	ui.SetPathFilter(cfg.HiddenPaths, cfg.VisiblePaths)
 	if *baseURL == "" {
 		return fmt.Errorf("no Gerrit server: set url = \"https://review.example.com\" in %s, GERRIT_URL or -url", configPath)
@@ -55,6 +68,20 @@ func run() error {
 
 	client := gerrit.NewClient(*baseURL, user, password)
 	_, err = tea.NewProgram(ui.New(client, *query), tea.WithAltScreen()).Run()
+	return err
+}
+
+// runDemo runs the app on the demo changes of a fake server; what is done
+// in it is lost on exit.
+func runDemo(query string) error {
+	srv := gerrittest.Demo(time.Now())
+	url, err := srv.Start()
+	if err != nil {
+		return err
+	}
+	defer srv.Close()
+	client := gerrit.NewClient(url, gerrittest.User, gerrittest.Password)
+	_, err = tea.NewProgram(ui.New(client, query), tea.WithAltScreen()).Run()
 	return err
 }
 
