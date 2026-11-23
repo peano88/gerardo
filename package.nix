@@ -26,6 +26,8 @@ buildGoModule {
 
   meta = {
     description = "Terminal client for reviewing Gerrit changes";
+    homepage = "https://github.com/peano88/gerardo";
+    license = lib.licenses.mit;
     mainProgram = "gerardo";
   };
 }
