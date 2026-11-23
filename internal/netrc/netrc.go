@@ -1,4 +1,5 @@
-package gerrit
+// Package netrc reads credentials from a .netrc file.
+package netrc
 
 import (
 	"errors"
@@ -6,12 +7,12 @@ import (
 	"strings"
 )
 
-// ErrNoCredentials is returned when no netrc entry matches the host.
-var ErrNoCredentials = errors.New("no credentials found")
+// ErrNotFound is returned when no entry matches the host.
+var ErrNotFound = errors.New("no credentials found")
 
-// NetrcCredentials returns the login and password of the netrc entry for host,
-// falling back to the "default" entry.
-func NetrcCredentials(path, host string) (string, string, error) {
+// Lookup returns the login and password of the entry for host in the file at
+// path, falling back to the "default" entry.
+func Lookup(path, host string) (string, string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", "", err
@@ -59,5 +60,5 @@ func NetrcCredentials(path, host string) (string, string, error) {
 			return e.login, e.password, nil
 		}
 	}
-	return "", "", ErrNoCredentials
+	return "", "", ErrNotFound
 }

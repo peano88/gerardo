@@ -15,6 +15,7 @@ import (
 	"github.com/peano88/gerardo/internal/config"
 	"github.com/peano88/gerardo/internal/gerrit"
 	"github.com/peano88/gerardo/internal/gerrittest"
+	"github.com/peano88/gerardo/internal/netrc"
 	"github.com/peano88/gerardo/internal/ui"
 )
 
@@ -98,8 +99,8 @@ func credentials(baseURL string) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	user, password, err := gerrit.NetrcCredentials(filepath.Join(home, ".netrc"), parsed.Hostname())
-	if errors.Is(err, gerrit.ErrNoCredentials) || errors.Is(err, os.ErrNotExist) {
+	user, password, err := netrc.Lookup(filepath.Join(home, ".netrc"), parsed.Hostname())
+	if errors.Is(err, netrc.ErrNotFound) || errors.Is(err, os.ErrNotExist) {
 		return "", "", fmt.Errorf("no credentials for %s: generate an HTTP password in Gerrit (Settings → HTTP Credentials) "+
 			"and add `machine %s login <user> password <http-password>` to ~/.netrc, or set GERRIT_USER/GERRIT_PASSWORD",
 			parsed.Hostname(), parsed.Hostname())
