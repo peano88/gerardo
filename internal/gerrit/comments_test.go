@@ -78,6 +78,48 @@ func TestThreadsForRevision(t *testing.T) {
 	}
 }
 
+func TestThreadsForRange(t *testing.T) {
+	comments := map[string][]CommentInfo{
+		"main.go": {
+			{ID: "base", PatchSet: 2, Line: 3, Updated: at(1), Unresolved: true},
+			{ID: "base-parent", PatchSet: 2, Side: SideParent, Line: 1, Updated: at(1)},
+			{ID: "target", PatchSet: 3, Line: 5, Updated: at(1)},
+			{ID: "target-parent", PatchSet: 3, Side: SideParent, Line: 2, Updated: at(1)},
+			{ID: "older", PatchSet: 1, Line: 9, Updated: at(1), Unresolved: true},
+		},
+	}
+	ported := map[string][]CommentInfo{
+		"main.go": {
+			{ID: "base", PatchSet: 2, Line: 30, Updated: at(1), Unresolved: true},
+			{ID: "older", PatchSet: 1, Line: 7, Updated: at(1), Unresolved: true},
+		},
+	}
+	drafts := map[string][]CommentInfo{
+		"main.go": {{ID: "draft", InReplyTo: "base", PatchSet: 2, Line: 3, Updated: at(2), Draft: true}},
+	}
+
+	got := map[string]Thread{}
+	for _, th := range ThreadsForRange("main.go", 2, 3, comments, ported, drafts) {
+		got[th.Root().ID] = th
+	}
+	if len(got) != 3 {
+		t.Fatalf("got threads %v, want base, target and older", got)
+	}
+	if b := got["base"]; !b.OnBase || !b.Left() || b.Root().Line != 3 || len(b.Comments) != 2 {
+		t.Fatalf("base thread should be on the left on its own line with its draft, got %+v", b)
+	}
+	if o := got["older"]; o.Left() || o.Root().Line != 7 {
+		t.Fatalf("older thread should be ported onto the target, got %+v", o)
+	}
+	if got["target"].Left() {
+		t.Fatal("target thread should be on the right")
+	}
+
+	if threads := ThreadsForRange("main.go", 0, 3, comments, ported, drafts); len(threads) != 4 {
+		t.Fatalf("against Base, got %d threads, want those of ThreadsForRevision", len(threads))
+	}
+}
+
 func TestThreadsForRevisionWithDrafts(t *testing.T) {
 	comments := map[string][]CommentInfo{
 		"main.go": {{ID: "old", PatchSet: 1, Line: 3, Updated: at(1), Unresolved: true}},

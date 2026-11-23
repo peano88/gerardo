@@ -52,14 +52,14 @@ func TestNetrcCredentialsNoMatch(t *testing.T) {
 }
 
 func TestGetDiff(t *testing.T) {
-	var gotPath, gotContext string
+	var gotPath, gotContext, gotBase string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotPath, gotContext = r.URL.EscapedPath(), r.URL.Query().Get("context")
+		gotPath, gotContext, gotBase = r.URL.EscapedPath(), r.URL.Query().Get("context"), r.URL.Query().Get("base")
 		_, _ = w.Write([]byte(")]}'\n" + `{"change_type": "MODIFIED", "content": [{"ab": ["a"]}, {"a": ["b"], "b": ["c"]}, {"skip": 4}]}`))
 	}))
 	defer srv.Close()
 
-	diff, err := NewClient(srv.URL, "u", "p").GetDiff(context.Background(), "42", "abc", "pkg/sub/main.go")
+	diff, err := NewClient(srv.URL, "u", "p").GetDiff(context.Background(), "42", "abc", 0, "pkg/sub/main.go")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,6 +71,36 @@ func TestGetDiff(t *testing.T) {
 	}
 	if len(diff.Content) != 3 || diff.Content[1].B[0] != "c" || diff.Content[2].Skip != 4 {
 		t.Fatalf("unexpected diff: %+v", diff)
+	}
+	if gotBase != "" {
+		t.Fatalf("a diff against the parent should not set base, got %q", gotBase)
+	}
+
+	if _, err := NewClient(srv.URL, "u", "p").GetDiff(context.Background(), "42", "3", 1, "main.go"); err != nil {
+		t.Fatal(err)
+	}
+	if gotPath != "/a/changes/42/revisions/3/files/main.go/diff" || gotBase != "1" || gotContext != "ALL" {
+		t.Fatalf("diff against patch set 1: got %q base %q context %q", gotPath, gotBase, gotContext)
+	}
+}
+
+func TestListFiles(t *testing.T) {
+	var gotPath, gotBase string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath, gotBase = r.URL.EscapedPath(), r.URL.Query().Get("base")
+		_, _ = w.Write([]byte(")]}'\n" + `{"/COMMIT_MSG": {"status": "A"}, "main.go": {"lines_inserted": 2}}`))
+	}))
+	defer srv.Close()
+
+	files, err := NewClient(srv.URL, "u", "p").ListFiles(context.Background(), "42", "3", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotPath != "/a/changes/42/revisions/3/files/" || gotBase != "2" {
+		t.Fatalf("got %q base %q", gotPath, gotBase)
+	}
+	if len(files) != 2 || files["main.go"].LinesInserted != 2 {
+		t.Fatalf("unexpected files: %+v", files)
 	}
 }
 

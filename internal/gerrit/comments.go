@@ -109,6 +109,14 @@ func (c CommentInfo) OnParent() bool {
 // Thread is a root comment and its replies, oldest first.
 type Thread struct {
 	Comments []CommentInfo
+	// OnBase is set on a thread of the base patch set of a diff between two
+	// patch sets, shown on the left side.
+	OnBase bool
+}
+
+// Left reports whether the thread is shown on the left side of the diff.
+func (t Thread) Left() bool {
+	return t.OnBase || t.Root().OnParent()
 }
 
 // Root returns the comment that started the thread.
@@ -149,9 +157,38 @@ func BuildThreads(comments []CommentInfo) []Thread {
 		slices.SortStableFunc(group, func(a, b CommentInfo) int { return a.Updated.Compare(b.Updated.Time) })
 		threads = append(threads, Thread{Comments: group})
 	}
+	sortThreads(threads)
+	return threads
+}
+
+func sortThreads(threads []Thread) {
 	slices.SortFunc(threads, func(a, b Thread) int {
 		return cmp.Or(cmp.Compare(a.Root().Line, b.Root().Line), a.Root().Updated.Compare(b.Root().Updated.Time))
 	})
+}
+
+// ThreadsForRange returns the threads to show on path in the diff of patch
+// set target against base, a patch set number or 0 for the parent. Against
+// a patch set, the threads started on it are shown on the left, with their
+// own lines, in place of the threads on the parent.
+func ThreadsForRange(path string, base, target int, comments, ported, drafts map[string][]CommentInfo) []Thread {
+	if base == 0 {
+		return ThreadsForRevision(path, target, comments, ported, drafts)
+	}
+	var threads []Thread
+	onBase := map[string]bool{}
+	for _, t := range BuildThreads(slices.Concat(comments[path], drafts[path])) {
+		if root := t.Root(); root.PatchSet == base && !root.OnParent() {
+			t.OnBase, onBase[root.ID] = true, true
+			threads = append(threads, t)
+		}
+	}
+	for _, t := range ThreadsForRevision(path, target, comments, ported, drafts) {
+		if root := t.Root(); !onBase[root.ID] && !root.OnParent() {
+			threads = append(threads, t)
+		}
+	}
+	sortThreads(threads)
 	return threads
 }
 

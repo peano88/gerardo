@@ -205,7 +205,7 @@ func renderChangeLayout(c *gerrit.ChangeInfo, width int, view changeView) (strin
 
 	if hasRev {
 		b.WriteString(headingStyle.Render(fmt.Sprintf("Files (%d)", len(rev.Files))) + "\n")
-		for _, path := range rev.SortedPaths() {
+		for _, path := range gerrit.SortedPaths(rev.Files) {
 			f := rev.Files[path]
 			st := f.Status
 			if st == "" {

@@ -355,13 +355,13 @@ func (s *changeScreen) openThread() tea.Cmd {
 		return s.reply()
 	}
 	rev, ok := s.change.Current()
-	paths := rev.SortedPaths()
+	paths := gerrit.SortedPaths(rev.Files)
 	i := slices.Index(paths, root.Path)
 	if !ok || i < 0 {
 		s.notice = notice{text: root.Path + " is not in the current patch set"}
 		return nil
 	}
-	d := newDiffScreen(s.client, s.change, paths, i)
+	d := newDiffScreen(s.client, s.change, latestRange(s.change), paths, i)
 	d.focusThread = root.ID
 	return push(d)
 }

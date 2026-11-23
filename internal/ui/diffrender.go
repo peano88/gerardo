@@ -223,7 +223,7 @@ func renderDiff(path string, d *gerrit.DiffInfo, threads []gerrit.Thread, opts d
 			writeThread(i)
 			continue
 		}
-		key := threadKey{parent: root.OnParent(), line: root.Line}
+		key := threadKey{parent: t.Left(), line: root.Line}
 		if _, ok := byLine[key]; !ok {
 			keys = append(keys, key)
 		}

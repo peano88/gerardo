@@ -81,14 +81,14 @@ func TestChangeOpensThreadInDiff(t *testing.T) {
 func TestDiffFocusesThread(t *testing.T) {
 	threads := []gerrit.Thread{{Comments: []gerrit.CommentInfo{{ID: "t1", Path: "main.go", Line: 40, Message: "here"}}}}
 	change := &gerrit.ChangeInfo{Number: 42, CurrentRevision: "abc", Revisions: map[string]gerrit.RevisionInfo{"abc": {Number: 2}}}
-	d := newDiffScreen(nil, change, []string{"main.go"}, 0)
+	d := newDiffScreen(nil, change, latestRange(change), []string{"main.go"}, 0)
 	d.focusThread = "t1"
 	d.SetSize(100, 20)
 	var lines []string
 	for range 50 {
 		lines = append(lines, "x")
 	}
-	d.Update(diffLoadedMsg{path: "main.go", diff: &gerrit.DiffInfo{Content: []gerrit.DiffContent{{AB: lines}}}, threads: threads})
+	d.Update(diffLoadedMsg{rng: d.rng, path: "main.go", diff: &gerrit.DiffInfo{Content: []gerrit.DiffContent{{AB: lines}}}, threads: threads})
 	if tg := d.target(); tg.thread != 0 {
 		t.Fatalf("cursor should be on the focused thread, got %+v", tg)
 	}

@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -21,7 +22,10 @@ const (
 )
 
 type diffLoadedMsg struct {
-	path    string
+	rng  patchRange
+	path string
+	// paths is set when the files were listed again, for another range.
+	paths   []string
 	diff    *gerrit.DiffInfo
 	syntax  *syntaxLines
 	threads []gerrit.Thread
@@ -43,6 +47,7 @@ type anchor struct {
 type diffScreen struct {
 	client      *gerrit.Client
 	change      *gerrit.ChangeInfo
+	rng         patchRange
 	paths       []string
 	index       int
 	fullContext bool
@@ -60,6 +65,11 @@ type diffScreen struct {
 	sideBySide  bool
 	// focusThread is the root of the thread to put the cursor on once loaded.
 	focusThread string
+	// listFiles is set when the range changed since the files were listed;
+	// prevRange is the range to go back to if no file differs in the new one.
+	listFiles bool
+	prevRange patchRange
+	dialog    dialog
 
 	searching    bool
 	searchInput  textinput.Model
@@ -68,29 +78,36 @@ type diffScreen struct {
 	searchOrigin int
 }
 
-func newDiffScreen(client *gerrit.Client, change *gerrit.ChangeInfo, paths []string, index int) *diffScreen {
+func newDiffScreen(client *gerrit.Client, change *gerrit.ChangeInfo, rng patchRange, paths []string, index int) *diffScreen {
 	vp := viewport.New(0, 0)
 	vp.SetHorizontalStep(hScrollStep)
 	in := textinput.New()
 	in.Prompt = "/"
-	return &diffScreen{client: client, change: change, paths: paths, index: index, viewport: vp, searchInput: in, sideBySide: SideBySide}
+	return &diffScreen{client: client, change: change, rng: rng, paths: paths, index: index, viewport: vp, searchInput: in, sideBySide: SideBySide}
 }
 
 func (s *diffScreen) path() string {
 	return s.paths[s.index]
 }
 
-func (s *diffScreen) revisionNumber() int {
-	rev, _ := s.change.Current()
-	return rev.Number
-}
-
 func (s *diffScreen) Init() tea.Cmd {
 	s.loading = true
-	client, change, path, number := s.client, s.change, s.path(), s.revisionNumber()
+	client, change, rng, path, listFiles := s.client, s.change, s.rng, s.path(), s.listFiles
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
+
+		var paths []string
+		if listFiles {
+			files, err := rangeFiles(ctx, client, change, rng)
+			if err != nil || len(files) == 0 {
+				return diffLoadedMsg{rng: rng, paths: []string{}, err: err}
+			}
+			paths = gerrit.SortedPaths(files)
+			if !slices.Contains(paths, path) {
+				path = paths[0]
+			}
+		}
 
 		var (
 			wg                  sync.WaitGroup
@@ -98,26 +115,66 @@ func (s *diffScreen) Init() tea.Cmd {
 			comments            changeComments
 			diffErr, commentErr error
 		)
-		wg.Go(func() { diff, diffErr = client.GetDiff(ctx, strconv.Itoa(change.Number), change.CurrentRevision, path) })
-		wg.Go(func() { comments, commentErr = fetchComments(ctx, client, change) })
+		wg.Go(func() {
+			diff, diffErr = client.GetDiff(ctx, strconv.Itoa(change.Number), strconv.Itoa(rng.target), rng.base, path)
+		})
+		wg.Go(func() { comments, commentErr = fetchComments(ctx, client, change, rng.target) })
 		wg.Wait()
 
 		if diffErr != nil {
-			return diffLoadedMsg{path: path, err: diffErr}
+			return diffLoadedMsg{rng: rng, path: path, paths: paths, err: diffErr}
 		}
 		return diffLoadedMsg{
+			rng:     rng,
 			path:    path,
+			paths:   paths,
 			diff:    diff,
 			syntax:  highlightDiff(path, diff),
-			threads: comments.threads(path, number),
+			threads: comments.threads(path, rng),
 			err:     commentErr,
 		}
 	}
 }
 
+// applyRange compares the patch sets of r, listing the files again.
+func (s *diffScreen) applyRange(r patchRange) tea.Cmd {
+	if r == s.rng {
+		return nil
+	}
+	s.prevRange, s.rng, s.listFiles = s.rng, r, true
+	return s.Init()
+}
+
+// setPaths takes the files listed for the range, reporting when the file
+// shown so far does not differ in it. Without files, from an error or not,
+// the previous range is restored.
+func (s *diffScreen) setPaths(paths []string, path string, err error) bool {
+	s.listFiles = false
+	if len(paths) == 0 {
+		if err == nil {
+			s.notice = "no file differs between " + s.rng.String()
+		}
+		s.rng = s.prevRange
+		return false
+	}
+	if path != s.path() {
+		s.notice = fmt.Sprintf("%s does not differ between %s", s.path(), s.rng)
+		s.diff, s.syntax, s.threads, s.rendered = nil, nil, nil, renderedDiff{}
+	}
+	s.paths, s.index = paths, slices.Index(paths, path)
+	return true
+}
+
 func (s *diffScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
 	switch msg := msg.(type) {
 	case diffLoadedMsg:
+		if msg.rng != s.rng {
+			return s, nil
+		}
+		if msg.paths != nil && !s.setPaths(msg.paths, msg.path, msg.err) {
+			s.loading, s.err = false, msg.err
+			return s, nil
+		}
 		if msg.path != s.path() {
 			return s, nil
 		}
@@ -169,6 +226,13 @@ func (s *diffScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
 		return s, s.Init()
 
 	case tea.KeyMsg:
+		if s.dialog != nil {
+			done, cmd := s.dialog.update(msg)
+			if done {
+				s.dialog = nil
+			}
+			return s, cmd
+		}
 		if s.searching {
 			return s, s.handleSearchKey(msg)
 		}
@@ -362,6 +426,10 @@ func (s *diffScreen) handleKey(key string) (screen, tea.Cmd) {
 		return s, s.toggleResolved()
 	case "v":
 		return s, push(newReviewScreen(s.client, s.change))
+	case "p":
+		var n notice
+		s.dialog, n = openRangeDialog(s.change, s.rng, s.applyRange)
+		s.notice = n.text
 	case "s":
 		keep := s.anchor()
 		s.sideBySide = !s.sideBySide
@@ -376,8 +444,8 @@ func (s *diffScreen) handleKey(key string) (screen, tea.Cmd) {
 }
 
 func (s *diffScreen) back() tea.Cmd {
-	index := s.index
-	return tea.Sequence(pop, func() tea.Msg { return fileSelectedMsg{index: index} })
+	selected := fileSelectedMsg{path: s.path(), rng: s.rng}
+	return tea.Sequence(pop, func() tea.Msg { return selected })
 }
 
 func (s *diffScreen) handlePending(pending, key string) tea.Cmd {
@@ -548,19 +616,25 @@ func (s *diffScreen) refresh() {
 	s.viewport.SetYOffset(max(y, 0))
 }
 
-// commentInput returns the draft to create for a new comment at target.
-func commentInput(path string, t rowTarget) (gerrit.CommentInput, bool) {
+// commentInput returns the draft to create for a new comment at target in
+// the diff of r, and the patch set to create it on: a deleted line is on the
+// parent of the target, or on the base patch set.
+func commentInput(path string, t rowTarget, r patchRange) (gerrit.CommentInput, string, bool) {
 	in := gerrit.CommentInput{Path: path, Unresolved: new(true)}
+	left := false
 	switch {
 	case t.fileLevel:
 	case t.hasLine && t.line.kind == lineDeleted:
-		in.Side, in.Line = gerrit.SideParent, t.line.a
+		in.Line, left = t.line.a, true
+		if r.base == 0 {
+			in.Side = gerrit.SideParent
+		}
 	case t.hasLine:
 		in.Line = t.line.b
 	default:
-		return in, false
+		return in, "", false
 	}
-	return in, true
+	return in, r.revision(left), true
 }
 
 // replyInput returns the draft replying to the last comment of a thread.
@@ -599,7 +673,7 @@ func (s *diffScreen) comment() tea.Cmd {
 		return s.reply()
 	}
 	t := s.target()
-	in, ok := commentInput(s.path(), t)
+	in, revision, ok := commentInput(s.path(), t, s.rng)
 	if !ok {
 		s.notice = "move the cursor to a diff line or the file header to comment"
 		return nil
@@ -611,11 +685,11 @@ func (s *diffScreen) comment() tea.Cmd {
 			where += " of the parent"
 		}
 	}
-	context := []string{fmt.Sprintf("New comment on %s, %s (PS%d)", s.path(), where, s.revisionNumber())}
+	context := []string{fmt.Sprintf("New comment on %s, %s (PS%s)", s.path(), where, revision)}
 	if t.hasLine {
 		context = append(context, "", "    "+t.line.text)
 	}
-	return openEditor("", context, draftRequest{revision: s.change.CurrentRevision, input: in})
+	return openEditor("", context, draftRequest{revision: revision, input: in})
 }
 
 func (s *diffScreen) reply() tea.Cmd {
@@ -628,7 +702,7 @@ func (s *diffScreen) reply() tea.Cmd {
 		return s.editDraft()
 	}
 	in := replyInput(t, "", t.Unresolved())
-	return openEditor("", threadContext(t), draftRequest{revision: s.change.CurrentRevision, input: in})
+	return openEditor("", threadContext(t), draftRequest{revision: s.rng.revision(t.OnBase), input: in})
 }
 
 func (s *diffScreen) quickReply(message string) tea.Cmd {
@@ -637,7 +711,7 @@ func (s *diffScreen) quickReply(message string) tea.Cmd {
 		s.notice = "move the cursor to a thread to reply"
 		return nil
 	}
-	req := draftRequest{revision: s.change.CurrentRevision, input: replyInput(t, message, false)}
+	req := draftRequest{revision: s.rng.revision(t.OnBase), input: replyInput(t, message, false)}
 	if d, ok := s.cursorDraft(); ok {
 		req = draftRequest{revision: strconv.Itoa(d.PatchSet), draftID: d.ID, input: draftInput(d)}
 		req.input.Message, req.input.Unresolved = message, new(false)
@@ -722,6 +796,9 @@ func threadContext(t gerrit.Thread) []string {
 }
 
 func (s *diffScreen) View() string {
+	if s.dialog != nil {
+		return overlay(s.viewport.View(), s.dialog.view(s.viewport.Width), s.viewport.Width, s.viewport.Height)
+	}
 	return s.viewport.View()
 }
 
@@ -741,11 +818,14 @@ func (s *diffScreen) Status() string {
 			}
 		}
 	}
+	if s.dialog != nil {
+		return s.dialog.hints()
+	}
 	if s.searching {
 		return s.searchInput.View()
 	}
-	help := dimStyle.Render(fmt.Sprintf("[%d/%d] %d threads (%d open, %d drafts)", s.index+1, len(s.paths), len(s.threads), unresolved, drafts)) + "   " +
-		keyHints("]/[", "thread", "c", "comment", "r", "reply", "A/D", "ack/done", "s", s.layoutHint(), "v", "publish", "?", "help")
+	help := dimStyle.Render(fmt.Sprintf("[%d/%d] %s · %d threads (%d open, %d drafts)", s.index+1, len(s.paths), s.rng, len(s.threads), unresolved, drafts)) + "   " +
+		keyHints("]/[", "thread", "c", "comment", "r", "reply", "A/D", "ack/done", "s", s.layoutHint(), "p", "patch sets", "v", "publish", "?", "help")
 	if s.query != "" {
 		help = fmt.Sprintf("/%s: %d matches · %s", s.query, len(s.rendered.matchRows), help)
 	}
@@ -805,6 +885,9 @@ Folding and layout
   zR / zM / za        show the whole file / changes only / toggle
   s                   side by side / unified diff; side by side, new
                       comments on a changed row go on the new side
+  p                   choose the patch sets to compare: Base or a patch
+                      set, and a later one; against a patch set, its
+                      comments are on the left
 
 Comments
   c, i, enter         comment on the cursor line (file comment on the header);

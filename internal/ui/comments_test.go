@@ -35,26 +35,31 @@ func TestCommentInput(t *testing.T) {
 	tests := []struct {
 		name   string
 		target rowTarget
+		rng    patchRange
 		side   string
 		line   int
+		rev    string
 		ok     bool
 	}{
-		{name: "file header", target: rowTarget{fileLevel: true, thread: -1}, ok: true},
-		{name: "added line", target: rowTarget{hasLine: true, line: diffLine{kind: lineAdded, b: 7}, thread: -1}, line: 7, ok: true},
-		{name: "common line", target: rowTarget{hasLine: true, line: diffLine{kind: lineCommon, a: 4, b: 5}, thread: -1}, line: 5, ok: true},
-		{name: "deleted line", target: rowTarget{hasLine: true, line: diffLine{kind: lineDeleted, a: 9}, thread: -1}, side: gerrit.SideParent, line: 9, ok: true},
+		{name: "file header", target: rowTarget{fileLevel: true, thread: -1}, rev: "3", ok: true},
+		{name: "added line", target: rowTarget{hasLine: true, line: diffLine{kind: lineAdded, b: 7}, thread: -1}, line: 7, rev: "3", ok: true},
+		{name: "common line", target: rowTarget{hasLine: true, line: diffLine{kind: lineCommon, a: 4, b: 5}, thread: -1}, line: 5, rev: "3", ok: true},
+		{name: "deleted line", target: rowTarget{hasLine: true, line: diffLine{kind: lineDeleted, a: 9}, thread: -1}, side: gerrit.SideParent, line: 9, rev: "3", ok: true},
+		{name: "deleted line against a patch set", target: rowTarget{hasLine: true, line: diffLine{kind: lineDeleted, a: 9}, thread: -1}, rng: patchRange{base: 1}, line: 9, rev: "1", ok: true},
+		{name: "added line against a patch set", target: rowTarget{hasLine: true, line: diffLine{kind: lineAdded, b: 7}, thread: -1}, rng: patchRange{base: 1}, line: 7, rev: "3", ok: true},
 		{name: "fold marker", target: noTarget},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			in, ok := commentInput("main.go", tt.target)
+			tt.rng.target = 3
+			in, rev, ok := commentInput("main.go", tt.target, tt.rng)
 			if ok != tt.ok {
 				t.Fatalf("ok = %v, want %v", ok, tt.ok)
 			}
 			if !ok {
 				return
 			}
-			if in.Path != "main.go" || in.Side != tt.side || in.Line != tt.line || in.Unresolved == nil || !*in.Unresolved {
+			if in.Path != "main.go" || in.Side != tt.side || in.Line != tt.line || rev != tt.rev || in.Unresolved == nil || !*in.Unresolved {
 				t.Fatalf("unexpected input: %+v", in)
 			}
 		})
@@ -83,9 +88,10 @@ func newTestDiffScreen(t *testing.T, threads []gerrit.Thread) *diffScreen {
 		CurrentRevision: "abc",
 		Revisions:       map[string]gerrit.RevisionInfo{"abc": {Number: 2}},
 	}
-	s := newDiffScreen(nil, change, []string{"main.go"}, 0)
+	s := newDiffScreen(nil, change, latestRange(change), []string{"main.go"}, 0)
 	s.SetSize(100, 20)
 	s.Update(diffLoadedMsg{
+		rng:  s.rng,
 		path: "main.go",
 		diff: &gerrit.DiffInfo{Content: []gerrit.DiffContent{
 			{AB: common[:25]},

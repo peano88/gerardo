@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -87,16 +88,35 @@ func (c *Client) GetChange(ctx context.Context, id string) (*ChangeInfo, error) 
 	return &change, nil
 }
 
-// GetDiff fetches the full-file diff of a file in a revision against its
-// parent, with intraline edits.
-func (c *Client) GetDiff(ctx context.Context, change, revision, path string) (*DiffInfo, error) {
-	p := fmt.Sprintf("/changes/%s/revisions/%s/files/%s/diff?context=ALL&intraline=true",
-		url.PathEscape(change), url.PathEscape(revision), url.PathEscape(path))
+// ListFiles fetches the files modified by a revision against base, a patch
+// set number, or against its parent when base is 0.
+func (c *Client) ListFiles(ctx context.Context, change, revision string, base int) (map[string]FileInfo, error) {
+	p := fmt.Sprintf("/changes/%s/revisions/%s/files/%s", url.PathEscape(change), url.PathEscape(revision), baseQuery(base, "?"))
+	var files map[string]FileInfo
+	if err := c.get(ctx, p, &files); err != nil {
+		return nil, fmt.Errorf("list files: %w", err)
+	}
+	return files, nil
+}
+
+// GetDiff fetches the full-file diff of a file in a revision against base,
+// a patch set number, or against its parent when base is 0, with intraline
+// edits.
+func (c *Client) GetDiff(ctx context.Context, change, revision string, base int, path string) (*DiffInfo, error) {
+	p := fmt.Sprintf("/changes/%s/revisions/%s/files/%s/diff?context=ALL&intraline=true%s",
+		url.PathEscape(change), url.PathEscape(revision), url.PathEscape(path), baseQuery(base, "&"))
 	var diff DiffInfo
 	if err := c.get(ctx, p, &diff); err != nil {
 		return nil, fmt.Errorf("get diff of %s: %w", path, err)
 	}
 	return &diff, nil
+}
+
+func baseQuery(base int, sep string) string {
+	if base == 0 {
+		return ""
+	}
+	return sep + "base=" + strconv.Itoa(base)
 }
 
 // ListComments fetches the published inline comments of all revisions, by file path.

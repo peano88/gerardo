@@ -205,10 +205,10 @@ func (c *ChangeInfo) NeedsAttention(accountID int) bool {
 	return ok
 }
 
-// SortedPaths returns the file paths of the revision in a stable order.
-func (r RevisionInfo) SortedPaths() []string {
-	paths := make([]string, 0, len(r.Files))
-	for p := range r.Files {
+// SortedPaths returns the paths of files in a stable order.
+func SortedPaths(files map[string]FileInfo) []string {
+	paths := make([]string, 0, len(files))
+	for p := range files {
 		paths = append(paths, p)
 	}
 	slices.Sort(paths)

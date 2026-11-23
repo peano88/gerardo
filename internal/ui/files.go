@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -17,21 +18,26 @@ import (
 )
 
 // fileSelectedMsg tells the files screen which file the diff screen moved to,
-// so that going back keeps the cursor on the last viewed file.
-type fileSelectedMsg struct{ index int }
+// and the patch sets it compared, so that going back keeps both.
+type fileSelectedMsg struct {
+	path string
+	rng  patchRange
+}
 
-type commentsLoadedMsg struct {
+type filesLoadedMsg struct {
+	rng      patchRange
+	files    map[string]gerrit.FileInfo
 	comments changeComments
 	err      error
 }
 
 // changeComments holds the published comments of a change, the unresolved
-// threads ported onto its current revision and the user's drafts.
+// threads ported onto a patch set and the user's drafts.
 type changeComments struct {
 	comments, ported, drafts map[string][]gerrit.CommentInfo
 }
 
-func fetchComments(ctx context.Context, client *gerrit.Client, change *gerrit.ChangeInfo) (changeComments, error) {
+func fetchComments(ctx context.Context, client *gerrit.Client, change *gerrit.ChangeInfo, target int) (changeComments, error) {
 	number := strconv.Itoa(change.Number)
 	var (
 		wg                      sync.WaitGroup
@@ -39,20 +45,21 @@ func fetchComments(ctx context.Context, client *gerrit.Client, change *gerrit.Ch
 		cErr, portErr, draftErr error
 	)
 	wg.Go(func() { c.comments, cErr = client.ListComments(ctx, number) })
-	wg.Go(func() { c.ported, portErr = client.PortedComments(ctx, number, change.CurrentRevision) })
+	wg.Go(func() { c.ported, portErr = client.PortedComments(ctx, number, strconv.Itoa(target)) })
 	wg.Go(func() { c.drafts, draftErr = client.ListDrafts(ctx, number) })
 	wg.Wait()
 	return c, errors.Join(cErr, portErr, draftErr)
 }
 
-func (c changeComments) threads(path string, revision int) []gerrit.Thread {
-	return gerrit.ThreadsForRevision(path, revision, c.comments, c.ported, c.drafts)
+func (c changeComments) threads(path string, r patchRange) []gerrit.Thread {
+	return gerrit.ThreadsForRange(path, r.base, r.target, c.comments, c.ported, c.drafts)
 }
 
 type filesScreen struct {
 	client   *gerrit.Client
 	change   *gerrit.ChangeInfo
-	rev      gerrit.RevisionInfo
+	rng      patchRange
+	files    map[string]gerrit.FileInfo
 	paths    []string
 	comments changeComments
 	cursor   int
@@ -61,33 +68,65 @@ type filesScreen struct {
 	height   int
 	loading  bool
 	err      error
+	notice   notice
+	dialog   dialog
+	// selectPath is the file to put the cursor on once the files are loaded.
+	selectPath string
 }
 
 func newFilesScreen(client *gerrit.Client, change *gerrit.ChangeInfo) *filesScreen {
 	rev, _ := change.Current()
-	return &filesScreen{client: client, change: change, rev: rev, paths: rev.SortedPaths()}
+	return &filesScreen{client: client, change: change, rng: latestRange(change), files: rev.Files, paths: gerrit.SortedPaths(rev.Files)}
 }
 
 func (s *filesScreen) Init() tea.Cmd {
 	s.loading = true
-	client, change := s.client, s.change
+	client, change, rng := s.client, s.change, s.rng
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
-		c, err := fetchComments(ctx, client, change)
-		return commentsLoadedMsg{comments: c, err: err}
+		var (
+			wg               sync.WaitGroup
+			files            map[string]gerrit.FileInfo
+			c                changeComments
+			filesErr, comErr error
+		)
+		wg.Go(func() { files, filesErr = rangeFiles(ctx, client, change, rng) })
+		wg.Go(func() { c, comErr = fetchComments(ctx, client, change, rng.target) })
+		wg.Wait()
+		return filesLoadedMsg{rng: rng, files: files, comments: c, err: errors.Join(filesErr, comErr)}
 	}
 }
 
 func (s *filesScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
+	if key, ok := msg.(tea.KeyMsg); ok && s.dialog != nil {
+		done, cmd := s.dialog.update(key)
+		if done {
+			s.dialog = nil
+		}
+		return s, cmd
+	}
+	s.notice.update(msg)
 	switch msg := msg.(type) {
-	case commentsLoadedMsg:
+	case filesLoadedMsg:
+		if msg.rng != s.rng {
+			return s, nil
+		}
 		s.loading, s.err = false, msg.err
+		if msg.files != nil {
+			s.files, s.paths = msg.files, gerrit.SortedPaths(msg.files)
+			s.selectFile(s.selectPath)
+			s.selectPath = ""
+		}
 		s.comments = msg.comments
 		return s, nil
 
 	case fileSelectedMsg:
-		s.setCursor(msg.index)
+		if msg.rng != s.rng {
+			s.rng, s.selectPath = msg.rng, msg.path
+			return s, s.Init()
+		}
+		s.selectFile(msg.path)
 		return s, nil
 
 	case tea.KeyMsg:
@@ -96,6 +135,8 @@ func (s *filesScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
 			return s, pop
 		case "r":
 			return s, s.Init()
+		case "p":
+			s.dialog, s.notice = openRangeDialog(s.change, s.rng, s.applyRange)
 		case "up", "k":
 			s.setCursor(s.cursor - 1)
 		case "down", "j":
@@ -116,10 +157,30 @@ func (s *filesScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
 			if len(s.paths) == 0 {
 				return s, nil
 			}
-			return s, push(newDiffScreen(s.client, s.change, s.paths, s.cursor))
+			return s, push(newDiffScreen(s.client, s.change, s.rng, s.paths, s.cursor))
 		}
 	}
 	return s, nil
+}
+
+// applyRange lists the files of r, keeping the cursor on the same file.
+func (s *filesScreen) applyRange(r patchRange) tea.Cmd {
+	if r == s.rng {
+		return nil
+	}
+	s.rng = r
+	if s.cursor < len(s.paths) {
+		s.selectPath = s.paths[s.cursor]
+	}
+	return s.Init()
+}
+
+func (s *filesScreen) selectFile(path string) {
+	if i := slices.Index(s.paths, path); i >= 0 {
+		s.setCursor(i)
+	} else {
+		s.setCursor(s.cursor)
+	}
 }
 
 func (s *filesScreen) listHeight() int {
@@ -140,7 +201,7 @@ func (s *filesScreen) setCursor(i int) {
 
 // fileThreads counts the threads shown on path, and how many are unresolved.
 func (s *filesScreen) fileThreads(path string) (threads, open int) {
-	for _, t := range s.comments.threads(path, s.rev.Number) {
+	for _, t := range s.comments.threads(path, s.rng) {
 		threads++
 		if t.Unresolved() {
 			open++
@@ -162,7 +223,7 @@ func newFileColumns(width int) fileColumns {
 func (s *filesScreen) View() string {
 	cols := newFileColumns(s.width)
 	maxLines := 1
-	for _, f := range s.rev.Files {
+	for _, f := range s.files {
 		maxLines = max(maxLines, f.LinesInserted+f.LinesDeleted)
 	}
 
@@ -176,11 +237,18 @@ func (s *filesScreen) View() string {
 	for i := s.offset; i < min(len(s.paths), s.offset+s.listHeight()); i++ {
 		lines = append(lines, s.fileLine(s.paths[i], cols, maxLines, i == s.cursor))
 	}
-	return lipgloss.NewStyle().Width(s.width).Height(s.height).Render(strings.Join(lines, "\n"))
+	if len(s.paths) == 0 && !s.loading {
+		lines = append(lines, strings.Repeat(" ", listGutter)+dimStyle.Render("No files differ between "+s.rng.String()))
+	}
+	body := lipgloss.NewStyle().Width(s.width).Height(s.height).Render(strings.Join(lines, "\n"))
+	if s.dialog != nil {
+		return overlay(body, s.dialog.view(s.width), s.width, s.height)
+	}
+	return body
 }
 
 func (s *filesScreen) fileLine(path string, cols fileColumns, maxLines int, selected bool) string {
-	f := s.rev.Files[path]
+	f := s.files[path]
 	base := lipgloss.NewStyle()
 	gutter := "   "
 	if selected {
@@ -265,14 +333,17 @@ func churnBar(inserted, deleted, maxLines, width int, base lipgloss.Style) strin
 }
 
 func (s *filesScreen) Title() string {
-	return fmt.Sprintf("PS%d files", s.rev.Number)
+	if s.rng.base == 0 {
+		return fmt.Sprintf("PS%d files", s.rng.target)
+	}
+	return fmt.Sprintf("PS%d → PS%d files", s.rng.base, s.rng.target)
 }
 
 // TitleInfo sums up the files of the revision.
 func (s *filesScreen) TitleInfo() string {
 	inserted, deleted, threads, open := 0, 0, 0, 0
 	for _, p := range s.paths {
-		f := s.rev.Files[p]
+		f := s.files[p]
 		inserted, deleted = inserted+f.LinesInserted, deleted+f.LinesDeleted
 		t, o := s.fileThreads(p)
 		threads, open = threads+t, open+o
@@ -288,7 +359,10 @@ func (s *filesScreen) TitleInfo() string {
 }
 
 func (s *filesScreen) Status() string {
-	return status(s.loading, s.err, keyHints("enter", "diff", "↑/↓", "select", "r", "reload", "esc", "back"))
+	if s.dialog != nil {
+		return s.dialog.hints()
+	}
+	return s.notice.status(s.loading, s.err, keyHints("enter", "diff", "↑/↓", "select", "p", "patch sets", "r", "reload", "esc", "back"))
 }
 
 func (s *filesScreen) SetSize(width, height int) {
