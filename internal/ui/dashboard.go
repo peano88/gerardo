@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/peano88/gerrit-tui/internal/gerrit"
 )
@@ -25,8 +27,39 @@ const (
 	prefetchMargin = 10
 )
 
-var previewBorder = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderLeft(true).
-	BorderForeground(lipgloss.Color("8")).PaddingLeft(1)
+// previewGap separates the list from the preview.
+const previewGap = 2
+
+var (
+	previewBg          = lipgloss.AdaptiveColor{Light: "255", Dark: "235"}
+	previewBorderStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "240"})
+	// previewFrame has no top border: previewTop draws it, titled, in line
+	// with the column header of the list.
+	previewFrame = lipgloss.NewStyle().Border(lipgloss.RoundedBorder(), false, true, true).
+			BorderForeground(previewBorderStyle.GetForeground()).Background(previewBg).Padding(0, 1)
+)
+
+// previewTop is the top border of a preview frame as wide as width.
+func previewTop(title string, width int) string {
+	rule := max(width-ansi.StringWidth(title)-5, 0)
+	return previewBorderStyle.Render("╭─ ") + columnStyle.Render(title) +
+		previewBorderStyle.Render(" "+strings.Repeat("─", rule)+"╮")
+}
+
+// fillBackground paints bg behind every line of s, padded to width, also
+// after the resets of its styled spans.
+func fillBackground(s string, width int, bg lipgloss.TerminalColor) string {
+	on, _, _ := strings.Cut(lipgloss.NewStyle().Background(bg).Render(" "), " ")
+	if on == "" {
+		return s
+	}
+	lines := strings.Split(s, "\n")
+	for i, l := range lines {
+		pad := strings.Repeat(" ", max(width-ansi.StringWidth(l), 0))
+		lines[i] = on + strings.ReplaceAll(l, "\x1b[0m", "\x1b[0m"+on) + pad + "\x1b[0m"
+	}
+	return strings.Join(lines, "\n")
+}
 
 type changesLoadedMsg struct {
 	// gen is the load generation the page belongs to, start its offset.
@@ -419,7 +452,10 @@ func (d *dashboard) renderPreview() {
 func (d *dashboard) View() string {
 	body := d.listView(d.width)
 	if d.split() {
-		body = lipgloss.JoinHorizontal(lipgloss.Top, d.listView(d.listWidth()), previewBorder.Height(d.height).Render(d.preview.View()))
+		frame := previewFrame.Render(fillBackground(d.preview.View(), d.preview.Width, previewBg))
+		preview := lipgloss.NewStyle().MarginLeft(previewGap).
+			Render(previewTop("Preview", lipgloss.Width(frame)) + "\n" + frame)
+		body = lipgloss.JoinHorizontal(lipgloss.Top, d.listView(d.listWidth()), preview)
 	}
 	return body
 }
@@ -470,7 +506,7 @@ func (d *dashboard) listWidth() int {
 
 func (d *dashboard) layout() {
 	if d.split() {
-		d.preview.Width, d.preview.Height = d.width-d.listWidth()-2, d.height
+		d.preview.Width, d.preview.Height = d.width-d.listWidth()-previewGap-previewFrame.GetHorizontalFrameSize(), d.height-previewFrame.GetVerticalFrameSize()-1
 		if d.previewFor != 0 {
 			d.renderPreview()
 		}
