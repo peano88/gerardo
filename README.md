@@ -7,8 +7,8 @@ Try it without a server: `gerardo -demo`.
 ## Install
 
 ```sh
-go build -o gerardo .   # Go 1.26.8+
-nix build                  # or with Nix; the flake also has an overlay
+go install github.com/peano88/gerardo@latest   # Go 1.26.8+
+nix run github:peano88/gerardo                 # the flake also has an overlay
 ```
 
 ## Configure
