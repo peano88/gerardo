@@ -1,0 +1,32 @@
+name: gerrit-api
+
+# Checks the client against the documentation of the newest Gerrit release.
+on:
+  schedule:
+    - cron: "0 6 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  latest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: snapshot the newest release
+        run: go run ./internal/apidoc/snapshot -out "$RUNNER_TEMP" latest
+      - name: check the client against it
+        run: APIDOC_SPECS="$RUNNER_TEMP" go test ./internal/apidoc -run TestContract -v
+      - name: check the snapshot is up to date
+        run: |
+          for f in "$RUNNER_TEMP"/gerrit-*.json; do
+            name=$(basename "$f")
+            if [ ! -f "internal/apidoc/testdata/$name" ]; then
+              echo "::error::${name%.json} is out: update the latest version in internal/apidoc/apidoc.go and run go generate ./internal/apidoc"
+              exit 1
+            fi
+          done
