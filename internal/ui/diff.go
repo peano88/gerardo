@@ -764,11 +764,11 @@ func (s *diffScreen) deleteDraft() tea.Cmd {
 	}
 	s.loading = true
 	client, number := s.client, strconv.Itoa(s.change.Number)
-	return func() tea.Msg {
+	return write(func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
 		return draftSavedMsg{notice: "draft deleted", err: client.DeleteDraft(ctx, number, strconv.Itoa(d.PatchSet), d.ID)}
-	}
+	})
 }
 
 func (s *diffScreen) saveDraft(req draftRequest, notice string) tea.Cmd {

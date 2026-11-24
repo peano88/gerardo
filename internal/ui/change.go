@@ -453,11 +453,11 @@ func (s *changeScreen) openRebase(related []gerrit.RelatedChangeInfo) tea.Cmd {
 // action runs a change operation, reporting it with notice once done.
 func (s *changeScreen) action(notice string, do func(ctx context.Context, number string) error) tea.Cmd {
 	number := strconv.Itoa(s.number)
-	return func() tea.Msg {
+	return write(func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
 		return changeActionMsg{notice: notice, err: do(ctx, number)}
-	}
+	})
 }
 
 func (s *changeScreen) View() string {

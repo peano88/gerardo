@@ -219,11 +219,11 @@ func (s *reviewScreen) send() tea.Cmd {
 	}
 	s.sending, s.err = true, nil
 	client, number, revision := s.client, strconv.Itoa(s.change.Number), s.change.CurrentRevision
-	return func() tea.Msg {
+	return write(func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
 		return reviewPostedMsg{err: client.SetReview(ctx, number, revision, in)}
-	}
+	})
 }
 
 func (s *reviewScreen) View() string {

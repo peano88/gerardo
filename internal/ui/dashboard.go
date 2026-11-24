@@ -318,7 +318,7 @@ func (d *dashboard) Update(msg tea.Msg) (screen, tea.Cmd) {
 		switch msg.String() {
 		case "q":
 			if d.root {
-				return d, tea.Quit
+				return d, quit
 			}
 			return d, pop
 		case "esc", "backspace":

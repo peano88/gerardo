@@ -26,7 +26,7 @@ type draftRequest struct {
 // saveDraft creates or updates the draft of req on change.
 func saveDraft(client *gerrit.Client, change int, req draftRequest, notice string) tea.Cmd {
 	number := strconv.Itoa(change)
-	return func() tea.Msg {
+	return write(func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
 		var err error
@@ -36,7 +36,7 @@ func saveDraft(client *gerrit.Client, change int, req draftRequest, notice strin
 			err = client.UpdateDraft(ctx, number, req.revision, req.draftID, req.input)
 		}
 		return draftSavedMsg{notice: notice, err: err}
-	}
+	})
 }
 
 type editorClosedMsg struct {

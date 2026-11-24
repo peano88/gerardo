@@ -4,6 +4,7 @@ package ui
 import (
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -36,6 +37,24 @@ type pushMsg struct{ screen screen }
 
 type popMsg struct{}
 
+// quitMsg asks the app to quit once the writes running are done.
+type quitMsg struct{}
+
+func quit() tea.Msg { return quitMsg{} }
+
+// writes counts the requests changing something on the server that are
+// running, so that quitting does not cut them off.
+var writes atomic.Int32
+
+// write runs cmd as a request changing something on the server.
+func write(cmd tea.Cmd) tea.Cmd {
+	return func() tea.Msg {
+		writes.Add(1)
+		defer writes.Add(-1)
+		return cmd()
+	}
+}
+
 // focusMsg tells the screen uncovered by a pop that it is on top again.
 type focusMsg struct{}
 
@@ -51,6 +70,8 @@ type App struct {
 	host   string
 	width  int
 	height int
+	// quitting is set while waiting for writes to end before quitting.
+	quitting bool
 }
 
 // New creates the application starting on the dashboard for query.
@@ -64,7 +85,16 @@ func (a App) Init() tea.Cmd {
 }
 
 // Update handles navigation and forwards everything else to the top screen.
+// While quitting, it waits for the writes running to end.
 func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	a, cmd := a.update(msg)
+	if a.quitting && writes.Load() == 0 {
+		return a, tea.Quit
+	}
+	return a, cmd
+}
+
+func (a App) update(msg tea.Msg) (App, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		a.width, a.height = msg.Width, msg.Height
@@ -74,9 +104,19 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, nil
 
 	case tea.KeyMsg:
-		if msg.String() == "ctrl+c" {
+		switch {
+		case msg.String() == "ctrl+c" && a.quitting:
 			return a, tea.Quit
+		case msg.String() == "ctrl+c":
+			a.quitting = true
+			return a, nil
+		case a.quitting:
+			return a, nil
 		}
+
+	case quitMsg:
+		a.quitting = true
+		return a, nil
 
 	case pushMsg:
 		msg.screen.SetSize(a.bodySize())
@@ -85,7 +125,8 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case popMsg:
 		if len(a.stack) == 1 {
-			return a, tea.Quit
+			a.quitting = true
+			return a, nil
 		}
 		a.stack = a.stack[:len(a.stack)-1]
 		return a, func() tea.Msg { return focusMsg{} }
@@ -98,7 +139,11 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the top screen and its status line.
 func (a App) View() string {
-	return lipgloss.JoinVertical(lipgloss.Left, a.titleBar(), a.top().View(), a.top().Status())
+	status := a.top().Status()
+	if a.quitting {
+		status = dimStyle.Render("saving… quitting once done   ") + keyHints("ctrl+c", "quit now")
+	}
+	return lipgloss.JoinVertical(lipgloss.Left, a.titleBar(), a.top().View(), status)
 }
 
 var (

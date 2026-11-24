@@ -391,3 +391,39 @@ func TestDiffToggleSideBySideKeepsCursor(t *testing.T) {
 		t.Fatalf("toggling back should keep the cursor, got %+v", tg)
 	}
 }
+
+func TestQuitWaitsForWrites(t *testing.T) {
+	quits := func(cmd tea.Cmd) bool {
+		if cmd == nil {
+			return false
+		}
+		_, ok := cmd().(tea.QuitMsg)
+		return ok
+	}
+	app := New(nil, "is:open")
+	m, _ := app.Update(tea.WindowSizeMsg{Width: 80, Height: 20})
+
+	if _, cmd := m.Update(quitMsg{}); !quits(cmd) {
+		t.Fatal("without writes running, quitting is immediate")
+	}
+
+	writes.Add(1)
+	m, cmd := m.Update(quitMsg{})
+	if quits(cmd) || !strings.Contains(m.View(), "saving…") {
+		t.Fatal("quitting should wait for the write")
+	}
+	if _, cmd := m.Update(keyRunes("j")); quits(cmd) {
+		t.Fatal("other keys should not quit")
+	}
+	writes.Add(-1)
+	if _, cmd := m.Update(draftSavedMsg{}); !quits(cmd) {
+		t.Fatal("the end of the write should quit")
+	}
+
+	writes.Add(1)
+	defer writes.Add(-1)
+	m, _ = app.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	if _, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC}); !quits(cmd) {
+		t.Fatal("a second ctrl+c should quit at once")
+	}
+}
