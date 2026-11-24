@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -18,6 +19,21 @@ import (
 	"github.com/peano88/gerardo/internal/netrc"
 	"github.com/peano88/gerardo/internal/ui"
 )
+
+// version is set at build time, by -ldflags "-X main.version=...".
+var version string
+
+// appVersion returns the version set at build time, else the module version
+// of a go install build.
+func appVersion() string {
+	if version != "" {
+		return version
+	}
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+		return info.Main.Version
+	}
+	return "dev"
+}
 
 func main() {
 	if err := run(); err != nil {
@@ -41,11 +57,16 @@ func run() error {
 	flag.StringVar(&ui.SyntaxStyle, "style", envOr("GERARDO_STYLE", cfg.Style), "chroma style used to highlight diffs")
 	flag.BoolVar(&ui.SideBySide, "side-by-side", cfg.SideBySide, "show diffs side by side")
 	demo := flag.Bool("demo", false, "explore made-up changes served by a built-in fake Gerrit server")
+	showVersion := flag.Bool("version", false, "print the version and exit")
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage: gerardo [flags]\n\nFlags override the environment, which overrides %s.\n\n", configPath)
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+	if *showVersion {
+		fmt.Println("gerardo", appVersion())
+		return nil
+	}
 	ui.PageSize, ui.GroupByProject = cfg.PageSize, cfg.GroupByProject
 	if *demo {
 		// The settings of a real server could hide the demo changes.

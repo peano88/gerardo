@@ -1,6 +1,6 @@
 { lib, buildGoModule }:
 
-buildGoModule {
+buildGoModule (finalAttrs: {
   pname = "gerardo";
   version = "0.1.0";
 
@@ -19,6 +19,7 @@ buildGoModule {
   ldflags = [
     "-s"
     "-w"
+    "-X main.version=v${finalAttrs.version}"
   ];
 
   # The integration tests serve a fake Gerrit on the loopback interface.
@@ -30,4 +31,4 @@ buildGoModule {
     license = lib.licenses.mit;
     mainProgram = "gerardo";
   };
-}
+})
