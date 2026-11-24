@@ -2,9 +2,13 @@
 
 A terminal client for reviewing [Gerrit](https://www.gerritcodereview.com/) changes: dashboard with preview, diffs (unified or side by side) between any two patch sets, inline comments, votes, submit and rebase.
 
+![gerardo comparing two patch sets](docs/demo.gif)
+
 Try it without a server: `gerardo -demo`.
 
 ## Install
+
+Download a binary from the [releases](https://github.com/peano88/gerardo/releases), or:
 
 ```sh
 go install github.com/peano88/gerardo@latest   # Go 1.26.8+
