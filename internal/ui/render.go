@@ -160,6 +160,9 @@ func renderChangeLayout(c *gerrit.ChangeInfo, width int, view changeView) (strin
 		where = append(where, "topic:"+c.Topic)
 	}
 	b.WriteString(dimStyle.Render(strings.Join(where, " · ")) + "\n")
+	if c.CurrentRevision != "" {
+		b.WriteString(dimStyle.Render("commit ") + c.CurrentRevision + "\n")
+	}
 
 	facts := []string{c.Owner.DisplayName()}
 	if !c.Updated.IsZero() {

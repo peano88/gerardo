@@ -9,6 +9,7 @@ package gerrittest
 
 import (
 	"cmp"
+	"crypto/sha1"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -162,7 +163,7 @@ func (s *Server) parentCommit(c *Change) string {
 	if p := s.change(c.ParentChange); p != nil && len(p.PatchSets) > 0 {
 		return commitID(p.Number, len(p.PatchSets))
 	}
-	return fmt.Sprintf("%040x", 0xba5e)
+	return fmt.Sprintf("%x", sha1.Sum([]byte("base")))
 }
 
 func (s *Server) tick() time.Time {
@@ -496,8 +497,9 @@ func baseNumber(c *Change, ps int, base string) (int, error) {
 	return n, nil
 }
 
+// commitID is the made-up SHA-1 of patch set ps of change number.
 func commitID(number, ps int) string {
-	return fmt.Sprintf("%020x%020x", number, ps)
+	return fmt.Sprintf("%x", sha1.Sum(fmt.Appendf(nil, "%d/%d", number, ps)))
 }
 
 // tree returns the files of patch set ps of c, or of its base when ps is 0,

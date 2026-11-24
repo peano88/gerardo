@@ -201,3 +201,16 @@ func TestIntegrationRebaseOntoParent(t *testing.T) {
 		t.Fatalf("the rebase should upload PS2, got %d patch sets", len(ch.PatchSets))
 	}
 }
+
+func TestIntegrationPreviewShowsCommit(t *testing.T) {
+	d := newDriver(t, "change:4210")
+	ch, _ := d.srv.Change(4210)
+	if len(ch.PatchSets) != 3 {
+		t.Fatalf("got %d patch sets", len(ch.PatchSets))
+	}
+	info := d.top().(*dashboard).previews[4210]
+	if info == nil || len(info.CurrentRevision) != 40 {
+		t.Fatalf("preview should hold the change with its commit, got %+v", info)
+	}
+	d.expect("commit " + info.CurrentRevision)
+}
