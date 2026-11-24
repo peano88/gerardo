@@ -62,7 +62,14 @@ type rangeDialog struct {
 	// onTarget is set when the target column is focused.
 	onTarget bool
 	apply    func(patchRange) tea.Cmd
+	// uploads are the revisions of the change, by patch set number.
+	uploads map[int]gerrit.RevisionInfo
+	// offset is the first row shown when the rows do not all fit.
+	offset int
 }
+
+// rangeRows is the number of patch set rows shown at once.
+const rangeRows = 10
 
 // openRangeDialog returns the dialog choosing the patch sets of change to
 // compare, or a notice when it has a single one.
@@ -71,7 +78,23 @@ func openRangeDialog(change *gerrit.ChangeInfo, rng patchRange, apply func(patch
 	if latest < 2 {
 		return nil, notice{text: "the change has a single patch set"}
 	}
-	return &rangeDialog{latest: latest, rng: rng, apply: apply}, notice{}
+	d := &rangeDialog{latest: latest, rng: rng, apply: apply, uploads: map[int]gerrit.RevisionInfo{}}
+	for _, r := range change.PatchSets() {
+		d.uploads[r.Number] = r
+	}
+	d.scroll()
+	return d, notice{}
+}
+
+// scroll keeps the row of the focused selection shown.
+func (d *rangeDialog) scroll() {
+	row := d.rng.base
+	if d.onTarget {
+		row = d.rng.target
+	}
+	d.offset = min(d.offset, row)
+	d.offset = max(d.offset, row-rangeRows+1)
+	d.offset = min(max(d.offset, 0), max(d.latest+1-rangeRows, 0))
 }
 
 func (d *rangeDialog) move(delta int) {
@@ -105,6 +128,7 @@ func (d *rangeDialog) update(key tea.KeyMsg) (done bool, cmd tea.Cmd) {
 	case "end", "G":
 		d.move(d.latest)
 	}
+	d.scroll()
 	return false, nil
 }
 
@@ -140,19 +164,48 @@ func (d *rangeDialog) view(int) string {
 	}
 
 	lines := []string{confirmTitle.Render("Compare patch sets"), "",
-		heading("From", !d.onTarget) + heading("To", d.onTarget)}
-	for ps := 0; ps <= d.latest; ps++ {
+		heading("From", !d.onTarget) + heading("To", d.onTarget) + "  " + columnStyle.Render("Uploaded")}
+	end := min(d.offset+rangeRows, d.latest+1)
+	windowed := d.latest+1 > rangeRows
+	if windowed {
+		lines = append(lines, moreLine("↑", d.offset))
+	}
+	for ps := d.offset; ps < end; ps++ {
 		from := strings.Repeat(" ", rangeColumnWidth)
 		if ps < d.latest {
 			from = cell(baseLabel(ps), ps == d.rng.base, !d.onTarget, false)
 		}
-		to := ""
+		to := strings.Repeat(" ", rangeColumnWidth)
 		if ps > 0 {
 			to = cell(fmt.Sprintf("PS%d", ps), ps == d.rng.target, d.onTarget, ps == d.latest)
 		}
-		lines = append(lines, from+to)
+		lines = append(lines, from+to+"  "+d.upload(ps))
+	}
+	if windowed {
+		lines = append(lines, moreLine("↓", d.latest+1-end))
 	}
 	buttons := confirmButton.Render("enter compare") + "   " + cancelButton.Render("esc cancel")
 	lines = append(lines, "", dimStyle.Render(d.rng.String()), "", buttons)
 	return confirmBox.Render(strings.Join(lines, "\n"))
+}
+
+// upload describes when and by whom patch set ps was uploaded.
+func (d *rangeDialog) upload(ps int) string {
+	r, ok := d.uploads[ps]
+	if !ok || r.Created.IsZero() {
+		return ""
+	}
+	out := dimStyle.Render(r.Created.Local().Format("2006-01-02 15:04"))
+	if r.Uploader != nil {
+		out += "  " + r.Uploader.DisplayName()
+	}
+	return out
+}
+
+// moreLine tells how many rows are hidden in a direction, blank when none.
+func moreLine(arrow string, n int) string {
+	if n == 0 {
+		return ""
+	}
+	return dimStyle.Render(fmt.Sprintf("  %s %d more", arrow, n))
 }

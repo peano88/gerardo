@@ -42,7 +42,9 @@ type PatchSet struct {
 	// Message is the commit message, the subject of the change by default.
 	Message string
 	// parent is the commit the patch set is based on.
-	parent string
+	parent   string
+	created  time.Time
+	uploader int
 }
 
 // Change is a change held by the server. The zero values of its fields are
@@ -147,6 +149,7 @@ func (s *Server) AddChange(c Change) *Change {
 func (s *Server) upload(c *Change, ps PatchSet, why string) {
 	ps.Message = cmp.Or(ps.Message, c.Subject)
 	ps.parent = s.parentCommit(c)
+	ps.created, ps.uploader = s.tick(), c.Owner
 	c.PatchSets = append(c.PatchSets, ps)
 	msg := fmt.Sprintf("Uploaded patch set %d.", len(c.PatchSets))
 	if why != "" {
@@ -819,9 +822,9 @@ func (s *Server) info(c *Change, opts []string) *gerrit.ChangeInfo {
 			if ps != cur && !has("ALL_REVISIONS") {
 				continue
 			}
-			rev := gerrit.RevisionInfo{Number: ps}
+			p := c.PatchSets[ps-1]
+			rev := gerrit.RevisionInfo{Number: ps, Created: gerrit.Timestamp{Time: p.created}, Uploader: s.account(p.uploader)}
 			if has("CURRENT_COMMIT") && ps == cur {
-				p := c.PatchSets[ps-1]
 				subject, _, _ := strings.Cut(p.Message, "\n")
 				rev.Commit = &gerrit.CommitInfo{Parents: []gerrit.CommitInfo{{Commit: p.parent}}, Subject: subject, Message: p.Message + "\n"}
 			}

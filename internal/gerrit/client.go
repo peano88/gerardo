@@ -70,12 +70,13 @@ func (c *Client) SuggestAccounts(ctx context.Context, query string, limit int) (
 	return accounts, nil
 }
 
-// GetChange fetches a change with its current revision, files, votes and messages.
+// GetChange fetches a change with its revisions, the files of the current
+// one, votes and messages.
 func (c *Client) GetChange(ctx context.Context, id string) (*ChangeInfo, error) {
 	v := url.Values{"o": {
 		"DETAILED_LABELS",
 		"DETAILED_ACCOUNTS",
-		"CURRENT_REVISION",
+		"ALL_REVISIONS",
 		"CURRENT_COMMIT",
 		"CURRENT_FILES",
 		"MESSAGES",

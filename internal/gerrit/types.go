@@ -160,9 +160,11 @@ type FileInfo struct {
 
 // RevisionInfo describes a patch set.
 type RevisionInfo struct {
-	Number int                 `json:"_number"`
-	Commit *CommitInfo         `json:"commit"`
-	Files  map[string]FileInfo `json:"files"`
+	Number   int                 `json:"_number"`
+	Created  Timestamp           `json:"created"`
+	Uploader *AccountInfo        `json:"uploader"`
+	Commit   *CommitInfo         `json:"commit"`
+	Files    map[string]FileInfo `json:"files"`
 }
 
 // ChangeMessageInfo is a top-level message posted on a change.
@@ -250,6 +252,16 @@ type DiffInfo struct {
 	ChangeType string        `json:"change_type"`
 	Binary     bool          `json:"binary"`
 	Content    []DiffContent `json:"content"`
+}
+
+// PatchSets returns the revisions requested, oldest first.
+func (c *ChangeInfo) PatchSets() []RevisionInfo {
+	out := make([]RevisionInfo, 0, len(c.Revisions))
+	for _, r := range c.Revisions {
+		out = append(out, r)
+	}
+	slices.SortFunc(out, func(a, b RevisionInfo) int { return a.Number - b.Number })
+	return out
 }
 
 // Current returns the current revision, if it was requested.

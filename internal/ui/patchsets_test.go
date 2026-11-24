@@ -1,8 +1,10 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -107,5 +109,42 @@ func TestDiffRangeMovesToChangedFile(t *testing.T) {
 	s.Update(diffLoadedMsg{rng: patchRange{base: 1, target: 3}, paths: []string{}})
 	if s.rng != r || !strings.Contains(s.notice, "no file differs") {
 		t.Fatalf("a range without changes should be undone, got %v, %q", s.rng, s.notice)
+	}
+}
+
+func TestRangeDialogUploadsAndScroll(t *testing.T) {
+	change := changeWithPatchSets(25)
+	for ps := 1; ps <= 25; ps++ {
+		change.Revisions[fmt.Sprintf("r%d", ps)] = gerrit.RevisionInfo{
+			Number:   ps,
+			Created:  gerrit.Timestamp{Time: time.Date(2026, 3, ps, 9, 30, 0, 0, time.Local)},
+			Uploader: &gerrit.AccountInfo{Name: fmt.Sprintf("Uploader %d", ps)},
+		}
+	}
+	d, _ := openRangeDialog(change, patchRange{target: 25}, nil)
+	rows := func() []string {
+		var out []string
+		for _, l := range plainLines(d.view(100)) {
+			if strings.Contains(l, "PS") || strings.Contains(l, "Base") || strings.Contains(l, "more") {
+				out = append(out, strings.Trim(l, "│ "))
+			}
+		}
+		return out
+	}
+
+	// Base is focused: the first rows are shown, with the uploads.
+	got := rows()
+	if !strings.HasPrefix(got[0], "▶ Base") || !strings.Contains(got[1], "2026-03-01 09:30  Uploader 1") {
+		t.Fatalf("got rows %q", got)
+	}
+	if last := got[len(got)-2]; !strings.Contains(last, "↓ 16 more") {
+		t.Fatalf("hidden rows should be counted, got %q", got)
+	}
+
+	// Moving to the latest patch set scrolls down to it.
+	d.update(tea.KeyMsg{Type: tea.KeyRight})
+	got = rows()
+	if !strings.Contains(got[0], "↑ 16 more") || !strings.Contains(got[len(got)-2], "PS25") {
+		t.Fatalf("target column should show the latest patch set, got %q", got)
 	}
 }
