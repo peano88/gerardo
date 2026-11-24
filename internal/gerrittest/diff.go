@@ -2,6 +2,8 @@ package gerrittest
 
 import (
 	"strings"
+	"unicode"
+	"unicode/utf16"
 
 	"github.com/peano88/gerardo/internal/gerrit"
 )
@@ -77,6 +79,9 @@ func diffContent(a, b []string) []gerrit.DiffContent {
 					j++
 				}
 			}
+			if len(c.A) > 0 && len(c.B) > 0 {
+				c.EditA, c.EditB = intralineEdits(c.A, c.B)
+			}
 		}
 		out = append(out, c)
 	}
@@ -117,4 +122,101 @@ func mapLine(a, b []string, line int) int {
 		}
 	}
 	return min(line, max(len(b), 1))
+}
+
+// wordTokens splits text into words, runs of spaces and single other
+// characters, the units intraline edits are computed on.
+func wordTokens(text string) []string {
+	kind := func(r rune) int {
+		switch {
+		case unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_':
+			return 1
+		case r == ' ' || r == '\t':
+			return 2
+		}
+		return 0
+	}
+	var tokens []string
+	start, prev := 0, -1
+	for i, r := range text {
+		k := kind(r)
+		if i > start && (k == 0 || k != prev) {
+			tokens = append(tokens, text[start:i])
+			start = i
+		}
+		prev = k
+	}
+	if start < len(text) {
+		tokens = append(tokens, text[start:])
+	}
+	return tokens
+}
+
+// intralineEdits returns the edits of a replaced region, as Gerrit does with
+// intraline=true: [skip, mark] pairs of UTF-16 units over the lines of each
+// side joined by newlines. Sides sharing nothing but spaces get none.
+func intralineEdits(a, b []string) (editA, editB [][2]int) {
+	ta, tb := wordTokens(strings.Join(a, "\n")), wordTokens(strings.Join(b, "\n"))
+	ops := diffLines(ta, tb)
+	shared := false
+	i, j := 0, 0
+	for _, op := range ops {
+		if op == opCommon && strings.TrimSpace(ta[i]) != "" {
+			shared = true
+		}
+		switch op {
+		case opCommon:
+			i, j = i+1, j+1
+		case opDelete:
+			i++
+		case opInsert:
+			j++
+		}
+	}
+	if !shared {
+		return nil, nil
+	}
+
+	var ra, rb runs
+	i, j = 0, 0
+	for _, op := range ops {
+		switch op {
+		case opCommon:
+			ra.skip(utf16Len(ta[i]))
+			rb.skip(utf16Len(tb[j]))
+			i, j = i+1, j+1
+		case opDelete:
+			ra.mark(utf16Len(ta[i]))
+			i++
+		case opInsert:
+			rb.mark(utf16Len(tb[j]))
+			j++
+		}
+	}
+	return ra.edits, rb.edits
+}
+
+// runs builds [skip, mark] pairs, merging adjacent marks.
+type runs struct {
+	edits   [][2]int
+	pending int
+	marking bool
+}
+
+func (r *runs) skip(n int) {
+	r.pending += n
+	r.marking = false
+}
+
+func (r *runs) mark(n int) {
+	if r.marking {
+		r.edits[len(r.edits)-1][1] += n
+		return
+	}
+	r.edits = append(r.edits, [2]int{r.pending, n})
+	r.pending, r.marking = 0, true
+}
+
+func utf16Len(s string) int {
+	return len(utf16.Encode([]rune(s)))
 }

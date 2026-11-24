@@ -221,3 +221,44 @@ func TestSubmitAndRebase(t *testing.T) {
 		t.Fatalf("rebase should upload PS2, got %d patch sets", len(ch.PatchSets))
 	}
 }
+
+// marked returns the text of each edit over lines joined by newlines.
+func marked(lines []string, edits [][2]int) []string {
+	text := []rune(strings.Join(lines, "\n"))
+	var out []string
+	pos := 0
+	for _, e := range edits {
+		pos += e[0]
+		out = append(out, string(text[pos:pos+e[1]]))
+		pos += e[1]
+	}
+	return out
+}
+
+func TestIntralineEdits(t *testing.T) {
+	c := start(t, Demo(demoNow))
+	diff, err := c.GetDiff(context.Background(), "4219", "1", 0, "search/page.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, chunk := range diff.Content {
+		if len(chunk.A) > 0 {
+			gotA, gotB := marked(chunk.A, chunk.EditA), marked(chunk.B, chunk.EditB)
+			if len(gotA) != 0 || strings.Join(gotB, "") != "(- 1) " {
+				t.Fatalf("n * size → (n - 1) * size: got A %q, B %q", gotA, gotB)
+			}
+			return
+		}
+	}
+	t.Fatal("no replaced region")
+}
+
+func TestIntralineEditsUnrelated(t *testing.T) {
+	if a, b := intralineEdits([]string{"return nil"}, []string{"defer f()"}); a != nil || b != nil {
+		t.Fatalf("lines sharing only spaces should get no edits, got %v %v", a, b)
+	}
+	a, b := intralineEdits([]string{"x := 1", "y := 2"}, []string{"x := 10", "y := 2"})
+	if got := marked([]string{"x := 10", "y := 2"}, b); len(a) != 1 || len(got) != 1 || got[0] != "10" {
+		t.Fatalf("got %v, B marks %q", a, got)
+	}
+}
