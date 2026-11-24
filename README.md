@@ -1,6 +1,6 @@
 # gerardo
 
-A terminal client for reviewing [Gerrit](https://www.gerritcodereview.com/) changes: dashboard with preview, diffs (unified or side by side) between any two patch sets, inline comments, votes, submit and rebase.
+A terminal client for reviewing [Gerrit](https://www.gerritcodereview.com/) changes: dashboard with preview, diffs (unified or side by side) between any two patch sets, inline comments, votes, submit and rebase. Works with Gerrit 3.3 or later.
 
 ![gerardo comparing two patch sets](docs/demo.gif)
 

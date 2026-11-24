@@ -97,6 +97,8 @@ type Server struct {
 	now      time.Time
 	nextID   int
 	srv      *http.Server
+	// requests are the requests served, such as "GET /changes/42".
+	requests []string
 }
 
 // New creates a server where self is the authenticated account. Its clock
@@ -238,6 +240,14 @@ func (s *Server) review(c *Change, author, ps int, votes map[string]int, message
 	c.Attention = slices.DeleteFunc(c.Attention, func(id int) bool { return id == author })
 }
 
+// Requests returns the requests served so far, such as "GET /changes/42",
+// without the /a prefix and the query.
+func (s *Server) Requests() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.requests)
+}
+
 // Change returns a copy of the change number, as it is now.
 func (s *Server) Change(number int) (Change, bool) {
 	s.mu.Lock()
@@ -331,6 +341,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.mu.Lock()
+	s.requests = append(s.requests, r.Method+" /"+path)
 	out, err := s.route(r, segments)
 	s.mu.Unlock()
 

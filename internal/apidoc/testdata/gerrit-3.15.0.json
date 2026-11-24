@@ -1,0 +1,3589 @@
+{
+  "version": "3.15.0",
+  "entities": {
+    "AbandonInput": {
+      "message": {
+        "optional": true
+      },
+      "notify": {
+        "optional": true
+      },
+      "notify_details": {
+        "optional": true
+      }
+    },
+    "AccountDetailInfo": {
+      "registered_on": {}
+    },
+    "AccountExternalIdInfo": {
+      "can_delete": {},
+      "email_address": {
+        "optional": true
+      },
+      "identity": {},
+      "trusted": {}
+    },
+    "AccountInfo": {
+      "_account_id": {},
+      "_more_accounts": {
+        "optional": true
+      },
+      "avatars": {
+        "optional": true
+      },
+      "deleted": {},
+      "display_name": {
+        "optional": true
+      },
+      "email": {
+        "optional": true
+      },
+      "inactive": {},
+      "name": {
+        "optional": true
+      },
+      "secondary_emails": {
+        "optional": true
+      },
+      "status": {
+        "optional": true
+      },
+      "tags": {
+        "optional": true
+      },
+      "username": {
+        "optional": true
+      }
+    },
+    "AccountInput": {
+      "display_name": {
+        "optional": true
+      },
+      "email": {
+        "optional": true
+      },
+      "groups": {
+        "optional": true
+      },
+      "http_password": {
+        "optional": true
+      },
+      "name": {
+        "optional": true
+      },
+      "ssh_key": {
+        "optional": true
+      },
+      "tokens": {
+        "optional": true
+      },
+      "username": {
+        "optional": true
+      }
+    },
+    "AccountNameInput": {
+      "name": {
+        "optional": true
+      }
+    },
+    "AccountStateInfo": {
+      "account": {},
+      "capabilities": {
+        "optional": true
+      },
+      "external_ids": {},
+      "groups": {},
+      "metadata": {}
+    },
+    "AccountStatusInput": {
+      "status": {
+        "optional": true
+      }
+    },
+    "ActionInfo": {
+      "enabled": {
+        "optional": true
+      },
+      "enabled_options": {
+        "optional": true
+      },
+      "label": {
+        "optional": true
+      },
+      "method": {
+        "optional": true
+      },
+      "title": {
+        "optional": true
+      }
+    },
+    "ApplyPatchInput": {
+      "allow_conflicts": {
+        "optional": true
+      },
+      "patch": {}
+    },
+    "ApplyPatchPatchSetInput": {
+      "amend": {
+        "optional": true
+      },
+      "author": {
+        "optional": true
+      },
+      "base": {
+        "optional": true
+      },
+      "commit_message": {
+        "optional": true
+      },
+      "patch": {},
+      "response_format_options": {
+        "optional": true
+      }
+    },
+    "ApplyProvidedFixInput": {
+      "fix_replacement_infos": {},
+      "original_patchset_for_fix": {
+        "optional": true
+      }
+    },
+    "ApprovalInfo": {
+      "date": {
+        "optional": true
+      },
+      "is_ai": {},
+      "permitted_voting_range": {
+        "optional": true
+      },
+      "post_submit": {},
+      "tag": {
+        "optional": true
+      },
+      "value": {
+        "optional": true
+      }
+    },
+    "AttentionSetInfo": {
+      "account": {},
+      "last_update": {},
+      "reason": {},
+      "reason_account": {}
+    },
+    "AttentionSetInput": {
+      "notify": {
+        "optional": true
+      },
+      "notify_details": {
+        "optional": true
+      },
+      "reason": {},
+      "user": {
+        "optional": true
+      }
+    },
+    "AuthTokenInfo": {
+      "expiration": {
+        "optional": true
+      },
+      "id": {},
+      "token": {
+        "optional": true
+      }
+    },
+    "AuthTokenInput": {
+      "id": {},
+      "lifetime": {
+        "optional": true
+      },
+      "token": {
+        "optional": true
+      }
+    },
+    "AvatarInfo": {
+      "height": {},
+      "url": {}
+    },
+    "BlameInfo": {
+      "author": {},
+      "commit_msg": {},
+      "id": {},
+      "ranges": {},
+      "time": {}
+    },
+    "CapabilityInfo": {
+      "accessDatabase": {},
+      "administrateServer": {},
+      "createAccount": {},
+      "createGroup": {},
+      "createProject": {},
+      "emailReviewers": {},
+      "flushCaches": {},
+      "killTask": {},
+      "maintainServer": {},
+      "priority": {},
+      "queryLimit": {},
+      "runAs": {},
+      "runGC": {},
+      "streamEvents": {},
+      "viewAllAccounts": {},
+      "viewCaches": {},
+      "viewConnections": {},
+      "viewPlugins": {},
+      "viewQueue": {},
+      "viewSecondaryEmails": {}
+    },
+    "ChangeEditIdentityInput": {
+      "email": {
+        "optional": true
+      },
+      "name": {
+        "optional": true
+      },
+      "type": {}
+    },
+    "ChangeEditInput": {
+      "new_path": {
+        "optional": true
+      },
+      "old_path": {
+        "optional": true
+      },
+      "restore_path": {
+        "optional": true
+      }
+    },
+    "ChangeEditMessageInput": {
+      "message": {}
+    },
+    "ChangeInfo": {
+      "_more_changes": {
+        "optional": true
+      },
+      "_number": {},
+      "actions": {
+        "optional": true
+      },
+      "attention_set": {
+        "optional": true
+      },
+      "branch": {},
+      "change_id": {},
+      "cherry_pick_of_change": {
+        "optional": true
+      },
+      "cherry_pick_of_patch_set": {
+        "optional": true
+      },
+      "contains_git_conflicts": {
+        "optional": true
+      },
+      "created": {},
+      "current_revision": {
+        "optional": true
+      },
+      "current_revision_number": {},
+      "custom_keyed_values": {
+        "optional": true
+      },
+      "deletions": {},
+      "full_branch": {},
+      "has_review_started": {
+        "optional": true
+      },
+      "hashtags": {
+        "optional": true
+      },
+      "id": {},
+      "insertions": {},
+      "is_private": {
+        "optional": true
+      },
+      "labels": {
+        "optional": true
+      },
+      "mergeable": {
+        "optional": true
+      },
+      "messages": {
+        "optional": true
+      },
+      "meta_rev_id": {
+        "optional": true
+      },
+      "owner": {},
+      "pending_reviewers": {
+        "optional": true
+      },
+      "permitted_labels": {
+        "optional": true
+      },
+      "plugins": {
+        "optional": true
+      },
+      "problems": {
+        "optional": true
+      },
+      "project": {},
+      "removable_labels": {
+        "optional": true
+      },
+      "removable_reviewers": {
+        "optional": true
+      },
+      "removed_from_attention_set": {
+        "optional": true
+      },
+      "requirements": {
+        "optional": true
+      },
+      "revert_of": {
+        "optional": true
+      },
+      "reviewed": {},
+      "reviewer_updates": {
+        "optional": true
+      },
+      "reviewers": {
+        "optional": true
+      },
+      "revisions": {
+        "optional": true
+      },
+      "starred": {},
+      "stars": {
+        "optional": true
+      },
+      "status": {},
+      "subject": {},
+      "submission_id": {
+        "optional": true
+      },
+      "submit_records": {
+        "optional": true
+      },
+      "submit_requirements": {
+        "optional": true
+      },
+      "submit_type": {
+        "optional": true
+      },
+      "submittable": {
+        "optional": true
+      },
+      "submitted": {},
+      "submitter": {},
+      "topic": {
+        "optional": true
+      },
+      "total_comment_count": {},
+      "tracking_ids": {
+        "optional": true
+      },
+      "triplet_id": {},
+      "unresolved_comment_count": {},
+      "updated": {},
+      "virtual_id_number": {},
+      "work_in_progress": {
+        "optional": true
+      }
+    },
+    "ChangeInput": {
+      "author": {
+        "optional": true
+      },
+      "base_change": {
+        "optional": true
+      },
+      "base_commit": {
+        "optional": true
+      },
+      "branch": {},
+      "custom_keyed_values": {
+        "optional": true
+      },
+      "is_private": {
+        "optional": true
+      },
+      "merge": {
+        "optional": true
+      },
+      "new_branch": {
+        "optional": true
+      },
+      "notify": {
+        "optional": true
+      },
+      "notify_details": {
+        "optional": true
+      },
+      "patch": {
+        "optional": true
+      },
+      "project": {},
+      "response_format_options": {
+        "optional": true
+      },
+      "status": {
+        "optional": true
+      },
+      "subject": {},
+      "topic": {
+        "optional": true
+      },
+      "validation_options": {
+        "optional": true
+      },
+      "work_in_progress": {
+        "optional": true
+      }
+    },
+    "ChangeMessageInfo": {
+      "_revision_number": {
+        "optional": true
+      },
+      "accounts_in_message": {},
+      "author": {
+        "optional": true
+      },
+      "date": {},
+      "id": {},
+      "message": {},
+      "real_author": {
+        "optional": true
+      },
+      "tag": {
+        "optional": true
+      }
+    },
+    "CherryPickInput": {
+      "allow_conflicts": {
+        "optional": true
+      },
+      "allow_empty": {
+        "optional": true
+      },
+      "base": {
+        "optional": true
+      },
+      "committer_email": {
+        "optional": true
+      },
+      "destination": {},
+      "keep_reviewers": {
+        "optional": true
+      },
+      "message": {
+        "optional": true
+      },
+      "notify": {
+        "optional": true
+      },
+      "notify_details": {
+        "optional": true
+      },
+      "parent": {
+        "optional": true
+      },
+      "topic": {
+        "optional": true
+      },
+      "validation_options": {
+        "optional": true
+      }
+    },
+    "CommentInfo": {
+      "author": {
+        "optional": true
+      },
+      "change_message_id": {
+        "optional": true
+      },
+      "commit_id": {
+        "optional": true
+      },
+      "context_lines": {
+        "optional": true
+      },
+      "fix_suggestions": {
+        "optional": true
+      },
+      "id": {},
+      "in_reply_to": {
+        "optional": true
+      },
+      "is_ai": {
+        "optional": true
+      },
+      "line": {
+        "optional": true
+      },
+      "message": {
+        "optional": true
+      },
+      "parent": {
+        "optional": true
+      },
+      "patch_set": {
+        "optional": true
+      },
+      "path": {
+        "optional": true
+      },
+      "range": {
+        "optional": true
+      },
+      "side": {
+        "optional": true
+      },
+      "source_content_type": {
+        "optional": true
+      },
+      "tag": {
+        "optional": true
+      },
+      "unresolved": {
+        "optional": true
+      },
+      "updated": {}
+    },
+    "CommentInput": {
+      "enable_context": {
+        "optional": true
+      },
+      "fix_suggestions": {
+        "optional": true
+      },
+      "id": {
+        "optional": true
+      },
+      "in_reply_to": {
+        "optional": true
+      },
+      "line": {
+        "optional": true
+      },
+      "message": {
+        "optional": true
+      },
+      "path": {
+        "optional": true
+      },
+      "range": {
+        "optional": true
+      },
+      "side": {
+        "optional": true
+      },
+      "tag": {
+        "optional": true
+      },
+      "unresolved": {
+        "optional": true
+      },
+      "updated": {
+        "optional": true
+      }
+    },
+    "CommentRange": {
+      "end_character": {},
+      "end_line": {},
+      "start_character": {},
+      "start_line": {}
+    },
+    "CommitInfo": {
+      "author": {},
+      "commit": {},
+      "committer": {},
+      "message": {},
+      "parents": {},
+      "resolve_conflicts_web_links": {
+        "optional": true
+      },
+      "subject": {},
+      "web_links": {
+        "optional": true
+      }
+    },
+    "CommitMessageInfo": {
+      "footers": {},
+      "full_message": {},
+      "subject": {}
+    },
+    "CommitMessageInput": {
+      "committer_email": {
+        "optional": true
+      },
+      "message": {},
+      "notify": {
+        "optional": true
+      },
+      "notify_details": {
+        "optional": true
+      }
+    },
+    "ConflictsInfo": {
+      "base": {
+        "optional": true
+      },
+      "contains_conflicts": {},
+      "merge_strategy": {
+        "optional": true
+      },
+      "no_base_reason": {
+        "optional": true
+      },
+      "ours": {
+        "optional": true
+      },
+      "theirs": {
+        "optional": true
+      }
+    },
+    "ContextLine": {
+      "context_line": {},
+      "line_number": {}
+    },
+    "ContextLineInfo": {
+      "context_line": {},
+      "line_number": {}
+    },
+    "ContributorAgreementInfo": {
+      "auto_verify_group": {
+        "optional": true
+      },
+      "description": {},
+      "name": {},
+      "url": {}
+    },
+    "ContributorAgreementInput": {
+      "name": {}
+    },
+    "CustomKeyedValuesInput": {
+      "add": {
+        "optional": true
+      },
+      "fix_replacement_infos": {},
+      "remove": {
+        "optional": true
+      }
+    },
+    "DeleteChangeMessageInput": {
+      "reason": {
+        "optional": true
+      }
+    },
+    "DeleteCommentInput": {
+      "reason": {
+        "optional": true
+      }
+    },
+    "DeleteDraftCommentsInput": {
+      "query": {
+        "optional": true
+      }
+    },
+    "DeleteReviewerInput": {
+      "notify": {
+        "optional": true
+      },
+      "notify_details": {
+        "optional": true
+      }
+    },
+    "DeleteVoteInput": {
+      "ignore_automatic_attention_set_rules": {
+        "optional": true
+      },
+      "label": {
+        "optional": true
+      },
+      "notify": {
+        "optional": true
+      },
+      "notify_details": {
+        "optional": true
+      },
+      "reason": {
+        "optional": true
+      }
+    },
+    "DeletedDraftCommentInfo": {
+      "change": {},
+      "deleted": {}
+    },
+    "DescriptionInput": {
+      "description": {}
+    },
+    "DiffContent": {
+      "a": {
+        "optional": true
+      },
+      "ab": {
+        "optional": true
+      },
+      "b": {
+        "optional": true
+      },
+      "common": {
+        "optional": true
+      },
+      "due_to_move": {},
+      "due_to_rebase": {},
+      "edit_a": {},
+      "edit_b": {},
+      "skip": {
+        "optional": true
+      }
+    },
+    "DiffFileMetaInfo": {
+      "content_type": {},
+      "lines": {},
+      "name": {},
+      "web_links": {
+        "optional": true
+      }
+    },
+    "DiffInfo": {
+      "binary": {},
+      "change_type": {},
+      "content": {},
+      "diff_header": {},
+      "edit_web_links": {
+        "optional": true
+      },
+      "intraline_status": {},
+      "meta_a": {},
+      "meta_b": {},
+      "web_links": {
+        "optional": true
+      }
+    },
+    "DiffPreferencesInfo": {
+      "auto_hide_diff_table_header": {},
+      "context": {},
+      "cursor_blink_rate": {},
+      "expand_all_comments": {},
+      "font_size": {},
+      "hide_empty_pane": {},
+      "hide_line_numbers": {},
+      "hide_top_menu": {},
+      "ignore_whitespace": {},
+      "intraline_difference": {},
+      "line_length": {},
+      "line_wrapping": {},
+      "manual_review": {},
+      "match_brackets": {},
+      "render_entire_file": {},
+      "responsive_mode": {
+        "optional": true
+      },
+      "retain_header": {},
+      "show_line_endings": {},
+      "show_tabs": {},
+      "show_whitespace_errors": {},
+      "skip_deleted": {},
+      "skip_unchanged": {},
+      "skip_uncommented": {},
+      "syntax_highlighting": {},
+      "tab_size": {}
+    },
+    "DiffPreferencesInput": {
+      "auto_hide_diff_table_header": {
+        "optional": true
+      },
+      "context": {
+        "optional": true
+      },
+      "expand_all_comments": {
+        "optional": true
+      },
+      "font_size": {
+        "optional": true
+      },
+      "hide_line_numbers": {
+        "optional": true
+      },
+      "hide_top_menu": {
+        "optional": true
+      },
+      "ignore_whitespace": {
+        "optional": true
+      },
+      "indent_with_tabs": {
+        "optional": true
+      },
+      "intraline_difference": {
+        "optional": true
+      },
+      "line_length": {
+        "optional": true
+      },
+      "line_wrapping": {
+        "optional": true
+      },
+      "manual_review": {
+        "optional": true
+      },
+      "retain_header": {
+        "optional": true
+      },
+      "show_line_endings": {
+        "optional": true
+      },
+      "show_tabs": {
+        "optional": true
+      },
+      "show_whitespace_errors": {
+        "optional": true
+      },
+      "skip_deleted": {
+        "optional": true
+      },
+      "skip_uncommented": {
+        "optional": true
+      },
+      "syntax_highlighting": {
+        "optional": true
+      },
+      "tab_size": {
+        "optional": true
+      }
+    },
+    "DiffWebLinkInfo": {
+      "image_url": {
+        "optional": true
+      },
+      "name": {},
+      "tooltip": {
+        "optional": true
+      },
+      "url": {}
+    },
+    "DisplayNameInput": {
+      "display_name": {}
+    },
+    "EditFileInfo": {
+      "web_links": {
+        "optional": true
+      }
+    },
+    "EditInfo": {
+      "base_patch_set_number": {},
+      "base_revision": {},
+      "commit": {},
+      "contains_git_conflicts": {
+        "optional": true
+      },
+      "fetch": {
+        "optional": true
+      },
+      "files": {
+        "optional": true
+      },
+      "ref": {}
+    },
+    "EditPreferencesInfo": {
+      "auto_close_brackets": {},
+      "cursor_blink_rate": {},
+      "hide_line_numbers": {},
+      "hide_top_menu": {},
+      "indent_unit": {},
+      "indent_with_tabs": {},
+      "line_length": {},
+      "line_wrapping": {},
+      "match_brackets": {},
+      "show_base": {},
+      "show_tabs": {},
+      "show_whitespace_errors": {},
+      "syntax_highlighting": {},
+      "tab_size": {}
+    },
+    "EmailInfo": {
+      "avatar": {},
+      "email": {},
+      "pending_confirmation": {},
+      "preferred": {}
+    },
+    "EmailInput": {
+      "email": {},
+      "no_confirmation": {},
+      "preferred": {}
+    },
+    "EvaluateChangeQueryExpressionResultInfo": {
+      "atom_explanations": {
+        "optional": true
+      },
+      "failing_atoms": {},
+      "passing_atoms": {},
+      "status": {}
+    },
+    "FetchInfo": {
+      "commands": {
+        "optional": true
+      },
+      "ref": {},
+      "url": {}
+    },
+    "FileContentInput": {
+      "binary_content": {
+        "optional": true
+      },
+      "content": {
+        "optional": true
+      },
+      "file_mode": {
+        "optional": true
+      }
+    },
+    "FileInfo": {
+      "binary": {},
+      "diffs_too_expensive_to_compute": {
+        "optional": true
+      },
+      "lines_deleted": {
+        "optional": true
+      },
+      "lines_inserted": {
+        "optional": true
+      },
+      "new_mode": {
+        "optional": true
+      },
+      "new_sha": {
+        "optional": true
+      },
+      "old_mode": {
+        "optional": true
+      },
+      "old_path": {
+        "optional": true
+      },
+      "old_sha": {
+        "optional": true
+      },
+      "size": {},
+      "size_delta": {},
+      "status": {
+        "optional": true
+      }
+    },
+    "FixInput": {
+      "delete_patch_set_if_commit_missing": {},
+      "expect_merged_as": {}
+    },
+    "FixReplacementInfo": {
+      "path": {},
+      "range": {},
+      "replacement": {}
+    },
+    "FixSuggestionInfo": {
+      "description": {},
+      "fix_id": {},
+      "replacements": {}
+    },
+    "FlowActionInfo": {
+      "name": {},
+      "parameters": {}
+    },
+    "FlowActionTypeInfo": {
+      "name": {},
+      "parameters_placeholder": {}
+    },
+    "FlowExpressionInfo": {
+      "action": {
+        "optional": true
+      },
+      "condition": {}
+    },
+    "FlowInfo": {
+      "created": {},
+      "last_evaluated": {
+        "optional": true
+      },
+      "owner": {},
+      "stages": {},
+      "uuid": {}
+    },
+    "FlowInput": {
+      "stage_expressions": {}
+    },
+    "FlowStageInfo": {
+      "expression": {},
+      "message": {
+        "optional": true
+      },
+      "state": {}
+    },
+    "GeneralPreferencesInfo": {
+      "ai_chat_selected_model": {
+        "optional": true
+      },
+      "allow_autocompleting_comments": {},
+      "allow_browser_notifications": {},
+      "allow_suggest_code_while_commenting": {},
+      "change_table": {},
+      "changes_per_page": {},
+      "date_format": {},
+      "default_base_for_merges": {},
+      "diff_page_sidebar": {
+        "optional": true
+      },
+      "diff_view": {},
+      "disable_keyboard_shortcuts": {},
+      "disable_token_highlighting": {},
+      "download_scheme": {
+        "optional": true
+      },
+      "email_format": {},
+      "email_strategy": {},
+      "expand_inline_diffs": {},
+      "label_filter": {
+        "optional": true
+      },
+      "legacycid_in_change_table": {},
+      "mute_common_path_prefixes": {},
+      "my": {},
+      "publish_comments_on_push": {},
+      "relative_date_in_change_table": {},
+      "signed_off_by": {},
+      "size_bar_in_change_table": {},
+      "theme": {},
+      "time_format": {},
+      "work_in_progress_by_default": {}
+    },
+    "GetMeta.FileInfo": {
+      "web_links": {
+        "optional": true
+      }
+    },
+    "GitPersonInfo": {
+      "date": {},
+      "email": {},
+      "name": {},
+      "tz": {}
+    },
+    "GpgKeyInfo": {
+      "fingerprint": {},
+      "id": {},
+      "key": {},
+      "problems": {},
+      "status": {},
+      "user_ids": {}
+    },
+    "GpgKeysInput": {
+      "add": {},
+      "delete": {}
+    },
+    "GroupBaseInfo": {
+      "id": {},
+      "name": {}
+    },
+    "HashtagsInput": {
+      "add": {
+        "optional": true
+      },
+      "remove": {
+        "optional": true
+      }
+    },
+    "HttpPasswordInput": {
+      "generate": {},
+      "http_password": {
+        "optional": true
+      }
+    },
+    "IncludedInInfo": {
+      "branches": {},
+      "external": {
+        "optional": true
+      },
+      "tags": {}
+    },
+    "InputWithCommitMessage": {
+      "commit_message": {
+        "optional": true
+      }
+    },
+    "InputWithMessage": {
+      "message": {
+        "optional": true
+      }
+    },
+    "IsFlowsEnabledInfo": {
+      "enabled": {}
+    },
+    "LabelInfo": {
+      "all": {
+        "optional": true
+      },
+      "approved": {
+        "optional": true
+      },
+      "blocking": {
+        "optional": true
+      },
+      "default_value": {
+        "optional": true
+      },
+      "description": {
+        "optional": true
+      },
+      "disliked": {
+        "optional": true
+      },
+      "optional": {},
+      "recommended": {
+        "optional": true
+      },
+      "rejected": {
+        "optional": true
+      },
+      "value": {
+        "optional": true
+      },
+      "values": {
+        "optional": true
+      }
+    },
+    "LegacySubmitRequirementInfo": {
+      "fallback_text": {},
+      "status": {},
+      "type": {}
+    },
+    "MergeInput": {
+      "allow_conflicts": {
+        "optional": true
+      },
+      "source": {},
+      "source_branch": {
+        "optional": true
+      },
+      "strategy": {
+        "optional": true
+      }
+    },
+    "MergePatchSetInput": {
+      "author": {
+        "optional": true
+      },
+      "base_change": {
+        "optional": true
+      },
+      "inherit_parent": {
+        "optional": true
+      },
+      "merge": {},
+      "subject": {
+        "optional": true
+      },
+      "validation_options": {
+        "optional": true
+      }
+    },
+    "MergeableInfo": {
+      "commit_merged": {
+        "optional": true
+      },
+      "conflicts": {
+        "optional": true
+      },
+      "content_merged": {
+        "optional": true
+      },
+      "mergeable": {},
+      "mergeable_into": {
+        "optional": true
+      },
+      "strategy": {
+        "optional": true
+      },
+      "submit_type": {}
+    },
+    "MoveInput": {
+      "destination_branch": {},
+      "keep_all_votes": {
+        "optional": true
+      },
+      "message": {
+        "optional": true
+      }
+    },
+    "NotifyInfo": {
+      "accounts": {
+        "optional": true
+      }
+    },
+    "OAuthTokenInfo": {
+      "access_token": {},
+      "expires_at": {
+        "optional": true
+      },
+      "provider_id": {
+        "optional": true
+      },
+      "resource_host": {},
+      "type": {},
+      "username": {}
+    },
+    "ParentInfo": {
+      "branch_name": {
+        "optional": true
+      },
+      "change_id": {
+        "optional": true
+      },
+      "change_number": {
+        "optional": true
+      },
+      "change_status": {
+        "optional": true
+      },
+      "commit_id": {
+        "optional": true
+      },
+      "is_merged_in_target_branch": {
+        "optional": true
+      },
+      "patch_set_number": {
+        "optional": true
+      }
+    },
+    "PluginDefinedInfo": {
+      "message": {
+        "optional": true
+      },
+      "name": {}
+    },
+    "PreferencesInput": {
+      "allow_autocompleting_comments": {},
+      "allow_browser_notifications": {},
+      "allow_suggest_code_while_commenting": {},
+      "change_table": {},
+      "changes_per_page": {
+        "optional": true
+      },
+      "date_format": {
+        "optional": true
+      },
+      "default_base_for_merges": {
+        "optional": true
+      },
+      "diff_page_sidebar": {
+        "optional": true
+      },
+      "diff_view": {
+        "optional": true
+      },
+      "disable_keyboard_shortcuts": {},
+      "download_scheme": {
+        "optional": true
+      },
+      "email_strategy": {
+        "optional": true
+      },
+      "expand_inline_diffs": {},
+      "legacycid_in_change_table": {
+        "optional": true
+      },
+      "mute_common_path_prefixes": {
+        "optional": true
+      },
+      "my": {
+        "optional": true
+      },
+      "relative_date_in_change_table": {
+        "optional": true
+      },
+      "signed_off_by": {
+        "optional": true
+      },
+      "size_bar_in_change_table": {
+        "optional": true
+      },
+      "theme": {
+        "optional": true
+      },
+      "time_format": {
+        "optional": true
+      }
+    },
+    "PrivateInput": {
+      "message": {
+        "optional": true
+      }
+    },
+    "ProblemInfo": {
+      "message": {},
+      "outcome": {
+        "optional": true
+      },
+      "status": {
+        "optional": true
+      }
+    },
+    "ProjectWatchInfo": {
+      "filter": {
+        "optional": true
+      },
+      "notify_abandoned_changes": {
+        "optional": true
+      },
+      "notify_all_comments": {
+        "optional": true
+      },
+      "notify_new_changes": {
+        "optional": true
+      },
+      "notify_new_patch_sets": {
+        "optional": true
+      },
+      "notify_submitted_changes": {
+        "optional": true
+      },
+      "problem": {
+        "optional": true
+      },
+      "project": {}
+    },
+    "PublishChangeEditInput": {
+      "notify": {
+        "optional": true
+      },
+      "notify_details": {
+        "optional": true
+      }
+    },
+    "PureRevertInfo": {
+      "is_pure_revert": {}
+    },
+    "PushCertificateInfo": {
+      "certificate": {},
+      "key": {}
+    },
+    "QueryLimitInfo": {
+      "max": {},
+      "min": {}
+    },
+    "RangeInfo": {
+      "end": {},
+      "start": {}
+    },
+    "RebaseChainInfo": {
+      "contains_git_conflicts": {},
+      "rebased_changes": {}
+    },
+    "RebaseChangeEditInput": {
+      "allow_conflicts": {
+        "optional": true
+      }
+    },
+    "RebaseInput": {
+      "allow_conflicts": {
+        "optional": true
+      },
+      "base": {
+        "optional": true
+      },
+      "committer_email": {
+        "optional": true
+      },
+      "on_behalf_of_uploader": {
+        "optional": true
+      },
+      "strategy": {
+        "optional": true
+      },
+      "validation_options": {
+        "optional": true
+      }
+    },
+    "RelatedChangeAndCommitInfo": {
+      "_change_number": {
+        "optional": true
+      },
+      "_current_revision_number": {
+        "optional": true
+      },
+      "_revision_number": {
+        "optional": true
+      },
+      "change_id": {
+        "optional": true
+      },
+      "commit": {},
+      "project": {},
+      "status": {
+        "optional": true
+      },
+      "submittable": {
+        "optional": true
+      },
+      "work_in_progress": {
+        "optional": true
+      }
+    },
+    "RelatedChangesInfo": {
+      "changes": {}
+    },
+    "Requirement": {
+      "fallback_text": {},
+      "status": {},
+      "type": {}
+    },
+    "RestoreInput": {
+      "message": {
+        "optional": true
+      }
+    },
+    "RevertInput": {
+      "message": {
+        "optional": true
+      },
+      "notify": {
+        "optional": true
+      },
+      "notify_details": {
+        "optional": true
+      },
+      "topic": {
+        "optional": true
+      },
+      "validation_options": {
+        "optional": true
+      },
+      "work_in_progress": {
+        "optional": true
+      }
+    },
+    "RevertSubmissionInfo": {
+      "revert_changes": {}
+    },
+    "ReviewInfo": {
+      "labels": {}
+    },
+    "ReviewInput": {
+      "add_to_attention_set": {
+        "optional": true
+      },
+      "comments": {
+        "optional": true
+      },
+      "draft_ids_to_publish": {
+        "optional": true
+      },
+      "drafts": {
+        "optional": true
+      },
+      "ignore_automatic_attention_set_rules": {
+        "optional": true
+      },
+      "is_ai": {
+        "optional": true
+      },
+      "labels": {
+        "optional": true
+      },
+      "message": {
+        "optional": true
+      },
+      "notify": {
+        "optional": true
+      },
+      "notify_details": {
+        "optional": true
+      },
+      "omit_duplicate_comments": {
+        "optional": true
+      },
+      "on_behalf_of": {
+        "optional": true
+      },
+      "ready": {
+        "optional": true
+      },
+      "remove_from_attention_set": {
+        "optional": true
+      },
+      "response_format_options": {
+        "optional": true
+      },
+      "reviewers": {
+        "optional": true
+      },
+      "tag": {
+        "optional": true
+      },
+      "work_in_progress": {
+        "optional": true
+      }
+    },
+    "ReviewResult": {
+      "change_info": {},
+      "error": {
+        "optional": true
+      },
+      "labels": {
+        "optional": true
+      },
+      "ready": {
+        "optional": true
+      },
+      "reviewers": {
+        "optional": true
+      }
+    },
+    "ReviewerInfo": {
+      "_account_id": {
+        "optional": true
+      },
+      "approvals": {}
+    },
+    "ReviewerInput": {
+      "confirmed": {
+        "optional": true
+      },
+      "notify": {
+        "optional": true
+      },
+      "notify_details": {
+        "optional": true
+      },
+      "on_behalf_of": {
+        "optional": true
+      },
+      "reviewer": {},
+      "state": {
+        "optional": true
+      }
+    },
+    "ReviewerResult": {
+      "ccs": {
+        "optional": true
+      },
+      "confirm": {},
+      "error": {
+        "optional": true
+      },
+      "input": {},
+      "removed": {
+        "optional": true
+      },
+      "reviewers": {
+        "optional": true
+      }
+    },
+    "ReviewerUpdateInfo": {
+      "real_updated_by": {},
+      "reviewer": {
+        "optional": true
+      },
+      "state": {},
+      "updated": {},
+      "updated_by": {}
+    },
+    "RevisionInfo": {
+      "_number": {},
+      "actions": {
+        "optional": true
+      },
+      "branch": {
+        "optional": true
+      },
+      "commit": {
+        "optional": true
+      },
+      "commit_with_footers": {
+        "optional": true
+      },
+      "conflicts": {
+        "optional": true
+      },
+      "created": {},
+      "description": {
+        "optional": true
+      },
+      "fetch": {},
+      "files": {
+        "optional": true
+      },
+      "kind": {},
+      "parents_data": {
+        "optional": true
+      },
+      "push_certificate": {
+        "optional": true
+      },
+      "real_uploader": {
+        "optional": true
+      },
+      "ref": {},
+      "reviewed": {
+        "optional": true
+      },
+      "uploader": {}
+    },
+    "RuleInput": {
+      "filters": {},
+      "rule": {}
+    },
+    "SshKeyInfo": {
+      "algorithm": {},
+      "comment": {
+        "optional": true
+      },
+      "encoded_key": {},
+      "seq": {},
+      "ssh_public_key": {},
+      "valid": {}
+    },
+    "SubmitInput": {
+      "notify": {
+        "optional": true
+      },
+      "notify_details": {
+        "optional": true
+      },
+      "on_behalf_of": {
+        "optional": true
+      },
+      "wait_for_merge": {
+        "optional": true
+      }
+    },
+    "SubmitRecord": {
+      "error_message": {
+        "optional": true
+      },
+      "impossible": {
+        "optional": true
+      },
+      "may": {
+        "optional": true
+      },
+      "need": {
+        "optional": true
+      },
+      "ok": {
+        "optional": true
+      },
+      "reject": {
+        "optional": true
+      },
+      "status": {}
+    },
+    "SubmitRecordInfo": {
+      "error_message": {
+        "optional": true
+      },
+      "labels": {
+        "optional": true
+      },
+      "requirements": {
+        "optional": true
+      },
+      "rule_name": {},
+      "status": {}
+    },
+    "SubmitRecordInfo.Label": {
+      "applied_by": {
+        "optional": true
+      },
+      "label": {},
+      "status": {}
+    },
+    "SubmitRequirementExpressionInfo": {
+      "atom_explanations": {
+        "optional": true
+      },
+      "error_message": {
+        "optional": true
+      },
+      "expression": {
+        "optional": true
+      },
+      "failing_atoms": {
+        "optional": true
+      },
+      "fulfilled": {},
+      "passing_atoms": {
+        "optional": true
+      },
+      "status": {}
+    },
+    "SubmitRequirementInput": {
+      "allow_override_in_child_projects": {
+        "optional": true
+      },
+      "applicability_expression": {
+        "optional": true
+      },
+      "description": {
+        "optional": true
+      },
+      "name": {},
+      "override_expression": {
+        "optional": true
+      },
+      "submittability_expression": {}
+    },
+    "SubmitRequirementResultInfo": {
+      "applicability_expression_result": {
+        "optional": true
+      },
+      "description": {
+        "optional": true
+      },
+      "is_legacy": {},
+      "name": {},
+      "override_expression_result": {
+        "optional": true
+      },
+      "status": {},
+      "submittability_expression_result": {}
+    },
+    "SubmittedTogetherInfo": {
+      "changes": {},
+      "non_visible_changes": {}
+    },
+    "SuggestedReviewerInfo": {
+      "account": {
+        "optional": true
+      },
+      "confirm": {
+        "optional": true
+      },
+      "count": {},
+      "group": {
+        "optional": true
+      }
+    },
+    "TopicInput": {
+      "topic": {
+        "optional": true
+      }
+    },
+    "TrackingIdInfo": {
+      "id": {},
+      "system": {}
+    },
+    "UsernameInput": {
+      "username": {}
+    },
+    "ValidationOptionInfo": {
+      "description": {},
+      "name": {}
+    },
+    "ValidationOptionInfos": {
+      "validation_options": {}
+    },
+    "VotingRangeInfo": {
+      "max": {},
+      "min": {}
+    },
+    "WebLinkInfo": {
+      "image_url": {
+        "optional": true
+      },
+      "name": {},
+      "tooltip": {
+        "optional": true
+      },
+      "url": {}
+    },
+    "WorkInProgressInput": {
+      "message": {
+        "optional": true
+      },
+      "notify": {
+        "optional": true
+      }
+    }
+  },
+  "endpoints": [
+    "DELETE /accounts/{account-id}",
+    "DELETE /accounts/{account-id}/active",
+    "DELETE /accounts/{account-id}/emails/{email-id}",
+    "DELETE /accounts/{account-id}/gpgkeys/{gpg-key-id}",
+    "DELETE /accounts/{account-id}/name",
+    "DELETE /accounts/{account-id}/password.http",
+    "DELETE /accounts/{account-id}/sshkeys/{ssh-key-id}",
+    "DELETE /accounts/{account-id}/starred.changes/{change-id}",
+    "DELETE /accounts/{account-id}/tokens/{token-id}",
+    "DELETE /changes/{change-id}",
+    "DELETE /changes/{change-id}/edit",
+    "DELETE /changes/{change-id}/edit/path%2fto%2ffile",
+    "DELETE /changes/{change-id}/flows/{flow-id}",
+    "DELETE /changes/{change-id}/private",
+    "DELETE /changes/{change-id}/revisions/{revision-id}/drafts/{draft-id}",
+    "DELETE /changes/{change-id}/revisions/{revision-id}/files/{file-id}/reviewed",
+    "DELETE /changes/{change-id}/topic",
+    "GET /accounts/",
+    "GET /accounts/{account-id}",
+    "GET /accounts/{account-id}/active",
+    "GET /accounts/{account-id}/agreements",
+    "GET /accounts/{account-id}/avatar",
+    "GET /accounts/{account-id}/avatar.change.url",
+    "GET /accounts/{account-id}/capabilities",
+    "GET /accounts/{account-id}/capabilities/{capability-id}",
+    "GET /accounts/{account-id}/detail",
+    "GET /accounts/{account-id}/emails",
+    "GET /accounts/{account-id}/emails/{email-id}",
+    "GET /accounts/{account-id}/external.ids",
+    "GET /accounts/{account-id}/gpgkeys",
+    "GET /accounts/{account-id}/gpgkeys/{gpg-key-id}",
+    "GET /accounts/{account-id}/groups/",
+    "GET /accounts/{account-id}/name",
+    "GET /accounts/{account-id}/oauthtoken",
+    "GET /accounts/{account-id}/preferences",
+    "GET /accounts/{account-id}/preferences.diff",
+    "GET /accounts/{account-id}/preferences.edit",
+    "GET /accounts/{account-id}/sshkeys",
+    "GET /accounts/{account-id}/sshkeys/{ssh-key-id}",
+    "GET /accounts/{account-id}/starred.changes",
+    "GET /accounts/{account-id}/state",
+    "GET /accounts/{account-id}/status",
+    "GET /accounts/{account-id}/tokens",
+    "GET /accounts/{account-id}/username",
+    "GET /accounts/{account-id}/watched.projects",
+    "GET /changes/",
+    "GET /changes/{change-id}",
+    "GET /changes/{change-id}/attention",
+    "GET /changes/{change-id}/check",
+    "GET /changes/{change-id}/comments",
+    "GET /changes/{change-id}/custom_keyed_values",
+    "GET /changes/{change-id}/detail",
+    "GET /changes/{change-id}/drafts",
+    "GET /changes/{change-id}/edit/{file-id}",
+    "GET /changes/{change-id}/edit/{file-id}/meta",
+    "GET /changes/{change-id}/edit:message",
+    "GET /changes/{change-id}/flows-actions/",
+    "GET /changes/{change-id}/flows/",
+    "GET /changes/{change-id}/flows/{flow-id}",
+    "GET /changes/{change-id}/hashtags",
+    "GET /changes/{change-id}/in",
+    "GET /changes/{change-id}/is-flows-enabled",
+    "GET /changes/{change-id}/message",
+    "GET /changes/{change-id}/messages",
+    "GET /changes/{change-id}/messages/{change-message-id}",
+    "GET /changes/{change-id}/meta_diff?old=SHA-1\u0026meta=SHA-1",
+    "GET /changes/{change-id}/pure_revert",
+    "GET /changes/{change-id}/query?expression={expression}",
+    "GET /changes/{change-id}/reviewers/",
+    "GET /changes/{change-id}/reviewers/{account-id}",
+    "GET /changes/{change-id}/reviewers/{account-id}/votes/",
+    "GET /changes/{change-id}/revisions/{revision-id}",
+    "GET /changes/{change-id}/revisions/{revision-id}/actions",
+    "GET /changes/{change-id}/revisions/{revision-id}/archive",
+    "GET /changes/{change-id}/revisions/{revision-id}/comments/",
+    "GET /changes/{change-id}/revisions/{revision-id}/comments/{comment-id}",
+    "GET /changes/{change-id}/revisions/{revision-id}/commit",
+    "GET /changes/{change-id}/revisions/{revision-id}/description",
+    "GET /changes/{change-id}/revisions/{revision-id}/drafts/",
+    "GET /changes/{change-id}/revisions/{revision-id}/drafts/{draft-id}",
+    "GET /changes/{change-id}/revisions/{revision-id}/files/",
+    "GET /changes/{change-id}/revisions/{revision-id}/files/{file-id}/blame",
+    "GET /changes/{change-id}/revisions/{revision-id}/files/{file-id}/content",
+    "GET /changes/{change-id}/revisions/{revision-id}/files/{file-id}/diff",
+    "GET /changes/{change-id}/revisions/{revision-id}/files/{file-id}/download",
+    "GET /changes/{change-id}/revisions/{revision-id}/fixes/{fix-id}/preview",
+    "GET /changes/{change-id}/revisions/{revision-id}/mergeable",
+    "GET /changes/{change-id}/revisions/{revision-id}/mergelist",
+    "GET /changes/{change-id}/revisions/{revision-id}/patch",
+    "GET /changes/{change-id}/revisions/{revision-id}/ported_comments",
+    "GET /changes/{change-id}/revisions/{revision-id}/ported_drafts",
+    "GET /changes/{change-id}/revisions/{revision-id}/related",
+    "GET /changes/{change-id}/revisions/{revision-id}/review",
+    "GET /changes/{change-id}/revisions/{revision-id}/reviewers/",
+    "GET /changes/{change-id}/revisions/{revision-id}/reviewers/{account-id}/votes/",
+    "GET /changes/{change-id}/revisions/{revision-id}/robotcomments",
+    "GET /changes/{change-id}/revisions/{revision-id}/robotcomments/{robot-comment-id}",
+    "GET /changes/{change-id}/revisions/{revision-id}/submit_type",
+    "GET /changes/{change-id}/robotcomments",
+    "GET /changes/{change-id}/submitted_together?o=NON_VISIBLE_CHANGES",
+    "GET /changes/{change-id}/suggest_reviewers?q=J\u0026n=5",
+    "GET /changes/{change-id}/suggest_reviewers?q=J\u0026n=5\u0026exclude-groups",
+    "GET /changes/{change-id}/suggest_reviewers?q=J\u0026reviewer-state=CC",
+    "GET /changes/{change-id}/topic",
+    "GET /changes/{change-id}/validation-options",
+    "POST /accounts/{account-id}/drafts:delete",
+    "POST /accounts/{account-id}/external.ids:delete",
+    "POST /accounts/{account-id}/gpgkeys",
+    "POST /accounts/{account-id}/index",
+    "POST /accounts/{account-id}/sshkeys",
+    "POST /accounts/{account-id}/watched.projects",
+    "POST /accounts/{account-id}/watched.projects:delete",
+    "POST /changes/",
+    "POST /changes/{change-id}/abandon",
+    "POST /changes/{change-id}/attention",
+    "POST /changes/{change-id}/check",
+    "POST /changes/{change-id}/check.submit_requirement",
+    "POST /changes/{change-id}/custom_keyed_values",
+    "POST /changes/{change-id}/edit",
+    "POST /changes/{change-id}/edit:publish",
+    "POST /changes/{change-id}/edit:rebase",
+    "POST /changes/{change-id}/flows/",
+    "POST /changes/{change-id}/hashtags",
+    "POST /changes/{change-id}/index",
+    "POST /changes/{change-id}/merge",
+    "POST /changes/{change-id}/move",
+    "POST /changes/{change-id}/patch:apply",
+    "POST /changes/{change-id}/private",
+    "POST /changes/{change-id}/ready",
+    "POST /changes/{change-id}/rebase",
+    "POST /changes/{change-id}/rebase:chain",
+    "POST /changes/{change-id}/restore",
+    "POST /changes/{change-id}/revert",
+    "POST /changes/{change-id}/revert_submission",
+    "POST /changes/{change-id}/reviewers",
+    "POST /changes/{change-id}/revisions/{revision-id}/cherrypick",
+    "POST /changes/{change-id}/revisions/{revision-id}/fix:apply",
+    "POST /changes/{change-id}/revisions/{revision-id}/fix:preview",
+    "POST /changes/{change-id}/revisions/{revision-id}/fixes/{fix-id}/apply",
+    "POST /changes/{change-id}/revisions/{revision-id}/rebase",
+    "POST /changes/{change-id}/revisions/{revision-id}/review",
+    "POST /changes/{change-id}/revisions/{revision-id}/submit",
+    "POST /changes/{change-id}/revisions/{revision-id}/test.submit_rule",
+    "POST /changes/{change-id}/revisions/{revision-id}/test.submit_type",
+    "POST /changes/{change-id}/submit",
+    "POST /changes/{change-id}/wip",
+    "PUT /accounts/{account-id}/active",
+    "PUT /accounts/{account-id}/agreements",
+    "PUT /accounts/{account-id}/displayname",
+    "PUT /accounts/{account-id}/emails/{email-id}",
+    "PUT /accounts/{account-id}/emails/{email-id}/avatar",
+    "PUT /accounts/{account-id}/emails/{email-id}/preferred",
+    "PUT /accounts/{account-id}/name",
+    "PUT /accounts/{account-id}/password.http",
+    "PUT /accounts/{account-id}/preferences",
+    "PUT /accounts/{account-id}/preferences.diff",
+    "PUT /accounts/{account-id}/preferences.edit",
+    "PUT /accounts/{account-id}/starred.changes/{change-id}",
+    "PUT /accounts/{account-id}/status",
+    "PUT /accounts/{account-id}/tokens/{token-id}",
+    "PUT /accounts/{account-id}/username",
+    "PUT /accounts/{username}",
+    "PUT /changes/{change-id}/edit/path%2fto%2ffile",
+    "PUT /changes/{change-id}/edit:identity",
+    "PUT /changes/{change-id}/edit:message",
+    "PUT /changes/{change-id}/message",
+    "PUT /changes/{change-id}/revisions/{revision-id}/description",
+    "PUT /changes/{change-id}/revisions/{revision-id}/drafts",
+    "PUT /changes/{change-id}/revisions/{revision-id}/drafts/{draft-id}",
+    "PUT /changes/{change-id}/revisions/{revision-id}/files/{file-id}/reviewed",
+    "PUT /changes/{change-id}/topic"
+  ],
+  "examples": [
+    {
+      "request": "POST /changes/",
+      "response": {
+        "id": "myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9941",
+        "project": "myProject",
+        "branch": "master",
+        "topic": "create-change-in-browser",
+        "change_id": "I8473b95934b5732ac55d26311a706c9c2bde9941",
+        "subject": "Let's support 100% Gerrit workflow direct in browser",
+        "status": "NEW",
+        "created": "2014-05-05 07:15:44.639000000",
+        "updated": "2014-05-05 07:15:44.639000000",
+        "mergeable": true,
+        "insertions": 0,
+        "deletions": 0,
+        "_number": 4711,
+        "owner": {
+          "name": "John Doe"
+        },
+        "current_revision_number": 2
+      }
+    },
+    {
+      "request": "GET /changes/?q=status:open+is:watched\u0026n=2",
+      "response": [
+        {
+          "id": "demo~master~Idaf5e098d70898b7119f6f4af5a6c13343d64b57",
+          "project": "demo",
+          "branch": "master",
+          "attention_set": {
+            "1000096": {
+              "account": {
+                "_account_id": 1000096,
+                "name": "John Doe",
+                "email": "john.doe@example.com"
+              },
+              "last_update": "2012-07-17 07:19:27.766000000",
+              "reason": "reviewer or cc replied"
+            }
+          },
+          "change_id": "Idaf5e098d70898b7119f6f4af5a6c13343d64b57",
+          "subject": "One change",
+          "status": "NEW",
+          "created": "2012-07-17 07:18:30.854000000",
+          "updated": "2012-07-17 07:19:27.766000000",
+          "mergeable": true,
+          "insertions": 26,
+          "deletions": 10,
+          "_number": 1756,
+          "owner": {
+            "name": "John Doe"
+          },
+          "current_revision_number": 2
+        },
+        {
+          "id": "demo~master~I09c8041b5867d5b33170316e2abc34b79bbb8501",
+          "project": "demo",
+          "branch": "master",
+          "change_id": "I09c8041b5867d5b33170316e2abc34b79bbb8501",
+          "subject": "Another change",
+          "status": "NEW",
+          "created": "2012-07-17 07:18:30.884000000",
+          "updated": "2012-07-17 07:18:30.885000000",
+          "mergeable": true,
+          "insertions": 12,
+          "deletions": 18,
+          "_number": 1757,
+          "owner": {
+            "name": "John Doe"
+          },
+          "current_revision_number": 2,
+          "_more_changes": true
+        }
+      ]
+    },
+    {
+      "request": "GET /changes/?q=is:open+owner:self\u0026q=is:open+reviewer:self+-owner:self\u0026q=is:closed+owner:self+limit:5\u0026o=LABELS",
+      "response": [
+        [
+          {
+            "id": "demo~master~Idaf5e098d70898b7119f6f4af5a6c13343d64b57",
+            "project": "demo",
+            "branch": "master",
+            "change_id": "Idaf5e098d70898b7119f6f4af5a6c13343d64b57",
+            "subject": "One change",
+            "status": "NEW",
+            "created": "2012-07-17 07:18:30.854000000",
+            "updated": "2012-07-17 07:19:27.766000000",
+            "mergeable": true,
+            "insertions": 4,
+            "deletions": 7,
+            "_number": 1756,
+            "owner": {
+              "name": "John Doe"
+            },
+            "labels": {
+              "Verified": {},
+              "Code-Review": {}
+            },
+            "current_revision_number": 2
+          }
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "request": "GET /changes/?q=97\u0026o=CURRENT_REVISION\u0026o=CURRENT_COMMIT\u0026o=CURRENT_FILES\u0026o=DOWNLOAD_COMMANDS",
+      "response": [
+        {
+          "id": "gerrit~master~I7ea46d2e2ee5c64c0d807677859cfb7d90b8966a",
+          "project": "gerrit",
+          "branch": "master",
+          "change_id": "I7ea46d2e2ee5c64c0d807677859cfb7d90b8966a",
+          "subject": "Use an EventBus to manage star icons",
+          "status": "NEW",
+          "created": "2012-04-25 00:52:25.580000000",
+          "updated": "2012-04-25 00:52:25.586000000",
+          "mergeable": true,
+          "insertions": 16,
+          "deletions": 7,
+          "_number": 97,
+          "owner": {
+            "name": "Shawn Pearce"
+          },
+          "current_revision_number": 1,
+          "current_revision": "184ebe53805e102605d11f6b143486d15c23a09c",
+          "revisions": {
+            "184ebe53805e102605d11f6b143486d15c23a09c": {
+              "kind": "REWORK",
+              "_number": 1,
+              "ref": "refs/changes/97/97/1",
+              "fetch": {
+                "git": {
+                  "url": "git://localhost/gerrit",
+                  "ref": "refs/changes/97/97/1",
+                  "commands": {
+                    "Checkout": "git fetch git://localhost/gerrit refs/changes/97/97/1 \u0026\u0026 git checkout FETCH_HEAD",
+                    "Cherry-Pick": "git fetch git://localhost/gerrit refs/changes/97/97/1 \u0026\u0026 git cherry-pick FETCH_HEAD",
+                    "Format-Patch": "git fetch git://localhost/gerrit refs/changes/97/97/1 \u0026\u0026 git format-patch -1 --stdout FETCH_HEAD",
+                    "Pull": "git pull git://localhost/gerrit refs/changes/97/97/1"
+                  }
+                },
+                "http": {
+                  "url": "http://myuser@127.0.0.1:8080/gerrit",
+                  "ref": "refs/changes/97/97/1",
+                  "commands": {
+                    "Checkout": "git fetch http://myuser@127.0.0.1:8080/gerrit refs/changes/97/97/1 \u0026\u0026 git checkout FETCH_HEAD",
+                    "Cherry-Pick": "git fetch http://myuser@127.0.0.1:8080/gerrit refs/changes/97/97/1 \u0026\u0026 git cherry-pick FETCH_HEAD",
+                    "Format-Patch": "git fetch http://myuser@127.0.0.1:8080/gerrit refs/changes/97/97/1 \u0026\u0026 git format-patch -1 --stdout FETCH_HEAD",
+                    "Pull": "git pull http://myuser@127.0.0.1:8080/gerrit refs/changes/97/97/1"
+                  }
+                },
+                "ssh": {
+                  "url": "ssh://myuser@*:29418/gerrit",
+                  "ref": "refs/changes/97/97/1",
+                  "commands": {
+                    "Checkout": "git fetch ssh://myuser@*:29418/gerrit refs/changes/97/97/1 \u0026\u0026 git checkout FETCH_HEAD",
+                    "Cherry-Pick": "git fetch ssh://myuser@*:29418/gerrit refs/changes/97/97/1 \u0026\u0026 git cherry-pick FETCH_HEAD",
+                    "Format-Patch": "git fetch ssh://myuser@*:29418/gerrit refs/changes/97/97/1 \u0026\u0026 git format-patch -1 --stdout FETCH_HEAD",
+                    "Pull": "git pull ssh://myuser@*:29418/gerrit refs/changes/97/97/1"
+                  }
+                }
+              },
+              "commit": {
+                "parents": [
+                  {
+                    "commit": "1eee2c9d8f352483781e772f35dc586a69ff5646",
+                    "subject": "Migrate contributor agreements to All-Projects."
+                  }
+                ],
+                "author": {
+                  "name": "Shawn O. Pearce",
+                  "email": "sop@google.com",
+                  "date": "2012-04-24 18:08:08.000000000",
+                  "tz": -420
+                },
+                "committer": {
+                  "name": "Shawn O. Pearce",
+                  "email": "sop@google.com",
+                  "date": "2012-04-24 18:08:08.000000000",
+                  "tz": -420
+                },
+                "subject": "Use an EventBus to manage star icons",
+                "message": "Use an EventBus to manage star icons\n\nImage widgets that need to ..."
+              },
+              "files": {
+                "gerrit-gwtui/src/main/java/com/google/gerrit/client/changes/ChangeCache.java": {
+                  "lines_deleted": 8,
+                  "size_delta": -412,
+                  "size": 7782
+                },
+                "gerrit-gwtui/src/main/java/com/google/gerrit/client/changes/ChangeDetailCache.java": {
+                  "lines_inserted": 1,
+                  "size_delta": 23,
+                  "size": 6762
+                },
+                "gerrit-gwtui/src/main/java/com/google/gerrit/client/changes/ChangeScreen.java": {
+                  "lines_inserted": 11,
+                  "lines_deleted": 19,
+                  "size_delta": -298,
+                  "size": 47023
+                },
+                "gerrit-gwtui/src/main/java/com/google/gerrit/client/changes/ChangeTable.java": {
+                  "lines_inserted": 23,
+                  "lines_deleted": 20,
+                  "size_delta": 132,
+                  "size": 17727
+                },
+                "gerrit-gwtui/src/main/java/com/google/gerrit/client/changes/StarCache.java": {
+                  "status": "D",
+                  "lines_deleted": 139,
+                  "size_delta": -5512,
+                  "size": 13098
+                },
+                "gerrit-gwtui/src/main/java/com/google/gerrit/client/changes/StarredChanges.java": {
+                  "status": "A",
+                  "lines_inserted": 204,
+                  "size_delta": 8345,
+                  "size": 8345
+                },
+                "gerrit-gwtui/src/main/java/com/google/gerrit/client/ui/Screen.java": {
+                  "lines_deleted": 9,
+                  "size_delta": -343,
+                  "size": 5385
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940",
+      "response": {
+        "id": "myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940",
+        "project": "myProject",
+        "branch": "master",
+        "attention_set": {
+          "1000096": {
+            "account": {
+              "_account_id": 1000096,
+              "name": "John Doe",
+              "email": "john.doe@example.com"
+            },
+            "last_update": "2013-02-21 11:16:36.775000000",
+            "reason": "reviewer or cc replied"
+          }
+        },
+        "change_id": "I8473b95934b5732ac55d26311a706c9c2bde9940",
+        "subject": "Implementing Feature X",
+        "status": "NEW",
+        "created": "2013-02-01 09:59:32.126000000",
+        "updated": "2013-02-21 11:16:36.775000000",
+        "mergeable": true,
+        "insertions": 34,
+        "deletions": 101,
+        "_number": 3965,
+        "owner": {
+          "name": "John Doe"
+        },
+        "current_revision_number": 2
+      }
+    },
+    {
+      "request": "POST /changes/test~master~Ic5466d107c5294414710935a8ef3b0180fb848dc/merge",
+      "response": {
+        "id": "test~master~Ic5466d107c5294414710935a8ef3b0180fb848dc",
+        "project": "test",
+        "branch": "master",
+        "hashtags": [],
+        "change_id": "Ic5466d107c5294414710935a8ef3b0180fb848dc",
+        "subject": "Merge dev_branch into master",
+        "status": "NEW",
+        "created": "2016-09-23 18:08:53.238000000",
+        "updated": "2016-09-23 18:09:25.934000000",
+        "submit_type": "MERGE_IF_NECESSARY",
+        "mergeable": true,
+        "insertions": 5,
+        "deletions": 0,
+        "_number": 72,
+        "owner": {
+          "_account_id": 1000000
+        },
+        "current_revision_number": 1,
+        "current_revision": "27cc4558b5a3d3387dd11ee2df7a117e7e581822"
+      }
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/topic",
+      "response": "Documentation"
+    },
+    {
+      "request": "PUT /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/topic",
+      "response": "Documentation"
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/pure_revert?o=247bccf56ae47634650bcc08b8aa784c3580ccas",
+      "response": {
+        "is_pure_revert": false
+      }
+    },
+    {
+      "request": "POST /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/abandon",
+      "response": {
+        "id": "myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940",
+        "project": "myProject",
+        "branch": "master",
+        "change_id": "I8473b95934b5732ac55d26311a706c9c2bde9940",
+        "subject": "Implementing Feature X",
+        "status": "ABANDONED",
+        "created": "2013-02-01 09:59:32.126000000",
+        "updated": "2013-02-21 11:16:36.775000000",
+        "mergeable": true,
+        "insertions": 3,
+        "deletions": 310,
+        "_number": 3965,
+        "owner": {
+          "name": "John Doe"
+        },
+        "current_revision_number": 2
+      }
+    },
+    {
+      "request": "POST /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/restore",
+      "response": {
+        "id": "myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940",
+        "project": "myProject",
+        "branch": "master",
+        "change_id": "I8473b95934b5732ac55d26311a706c9c2bde9940",
+        "subject": "Implementing Feature X",
+        "status": "NEW",
+        "created": "2013-02-01 09:59:32.126000000",
+        "updated": "2013-02-21 11:16:36.775000000",
+        "mergeable": true,
+        "insertions": 2,
+        "deletions": 13,
+        "_number": 3965,
+        "owner": {
+          "name": "John Doe"
+        },
+        "current_revision_number": 2
+      }
+    },
+    {
+      "request": "POST /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/move",
+      "response": {
+        "id": "myProject~release-branch~I8473b95934b5732ac55d26311a706c9c2bde9940",
+        "project": "myProject",
+        "branch": "release-branch",
+        "change_id": "I8473b95934b5732ac55d26311a706c9c2bde9940",
+        "subject": "Implementing Feature X",
+        "status": "NEW",
+        "created": "2013-02-01 09:59:32.126000000",
+        "updated": "2013-02-21 11:16:36.775000000",
+        "mergeable": true,
+        "insertions": 2,
+        "deletions": 13,
+        "_number": 3965,
+        "owner": {
+          "name": "John Doe"
+        },
+        "current_revision_number": 2
+      }
+    },
+    {
+      "request": "POST /changes/myProject~master~I1ffe09a505e25f15ce1521bcfb222e51e62c2a14/revert",
+      "response": {
+        "id": "myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940",
+        "project": "myProject",
+        "branch": "master",
+        "change_id": "I8473b95934b5732ac55d26311a706c9c2bde9940",
+        "subject": "Revert \"Implementing Feature X\"",
+        "status": "NEW",
+        "created": "2013-02-01 09:59:32.126000000",
+        "updated": "2013-02-21 11:16:36.775000000",
+        "mergeable": true,
+        "insertions": 6,
+        "deletions": 4,
+        "_number": 3965,
+        "owner": {
+          "name": "John Doe"
+        },
+        "current_revision_number": 2
+      }
+    },
+    {
+      "request": "POST /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/submit",
+      "response": {
+        "id": "myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940",
+        "project": "myProject",
+        "branch": "master",
+        "change_id": "I8473b95934b5732ac55d26311a706c9c2bde9940",
+        "subject": "Implementing Feature X",
+        "status": "MERGED",
+        "created": "2013-02-01 09:59:32.126000000",
+        "updated": "2013-02-21 11:16:36.775000000",
+        "submitted": "2013-02-21 11:16:36.615000000",
+        "_number": 3965,
+        "owner": {
+          "name": "John Doe"
+        },
+        "current_revision_number": 2
+      }
+    },
+    {
+      "request": "POST /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/patch:apply",
+      "response": {
+        "id": "myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9941",
+        "project": "myProject",
+        "branch": "release-branch",
+        "change_id": "I8473b95934b5732ac55d26311a706c9c2bde9941",
+        "subject": "Original change subject",
+        "status": "NEW",
+        "created": "2013-02-01 09:59:32.126000000",
+        "updated": "2013-02-21 11:16:36.775000000",
+        "mergeable": true,
+        "insertions": 12,
+        "deletions": 11,
+        "_number": 3965,
+        "owner": {
+          "name": "John Doe"
+        },
+        "current_revision_number": 1,
+        "current_revision": "184ebe53805e102605d11f6b143486d15c23a09c"
+      }
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/in",
+      "response": {
+        "branches": [
+          "master"
+        ],
+        "tags": []
+      }
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/robotcomments",
+      "response": {
+        "main.c": [
+          {
+            "patch_set": 1,
+            "id": "TvcXrmjM",
+            "line": 23,
+            "message": "unused variable",
+            "updated": "2016-02-26 15:40:43.986000000",
+            "author": {
+              "_account_id": 1000110,
+              "name": "Code Analyzer",
+              "email": "code.analyzer@example.com"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/drafts",
+      "response": {
+        "gerrit-server/src/main/java/com/google/gerrit/server/project/RefControl.java": [
+          {
+            "patch_set": 1,
+            "id": "TvcXrmjM",
+            "line": 23,
+            "message": "[nit] trailing whitespace",
+            "updated": "2013-02-26 15:40:43.986000000"
+          },
+          {
+            "patch_set": 2,
+            "id": "TveXwFiA",
+            "line": 49,
+            "in_reply_to": "TfYX-Iuo",
+            "message": "Done",
+            "updated": "2013-02-26 15:40:45.328000000"
+          }
+        ]
+      }
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/check",
+      "response": {
+        "id": "myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940",
+        "project": "myProject",
+        "branch": "master",
+        "change_id": "I8473b95934b5732ac55d26311a706c9c2bde9940",
+        "subject": "Implementing Feature X",
+        "status": "NEW",
+        "created": "2013-02-01 09:59:32.126000000",
+        "updated": "2013-02-21 11:16:36.775000000",
+        "mergeable": true,
+        "insertions": 34,
+        "deletions": 101,
+        "_number": 3965,
+        "owner": {
+          "name": "John Doe"
+        },
+        "current_revision_number": 2,
+        "problems": [
+          {
+            "message": "Current patch set 1 not found"
+          }
+        ]
+      }
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/hashtags",
+      "response": [
+        "hashtag1",
+        "hashtag2"
+      ]
+    },
+    {
+      "request": "POST /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/hashtags",
+      "response": [
+        "hashtag1",
+        "hashtag3"
+      ]
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/custom_keyed_values",
+      "response": {
+        "key1": "value1",
+        "key2": "value2"
+      }
+    },
+    {
+      "request": "POST /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/custom_keyed_values",
+      "response": {
+        "key1": "value1",
+        "key3": "value3"
+      }
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/messages",
+      "response": [
+        {
+          "id": "YH-egE",
+          "author": {
+            "_account_id": 1000096,
+            "name": "John Doe",
+            "email": "john.doe@example.com",
+            "username": "jdoe"
+          },
+          "date": "2013-03-23 21:34:02.419000000",
+          "message": "Patch Set 1:\n\nThis is the first message.",
+          "_revision_number": 1
+        },
+        {
+          "id": "WEEdhU",
+          "author": {
+            "_account_id": 1000097,
+            "name": "Jane Roe",
+            "email": "jane.roe@example.com",
+            "username": "jroe"
+          },
+          "date": "2013-03-23 21:36:52.332000000",
+          "message": "Patch Set 1:\n\nThis is the second message.\n\nWith a line break.",
+          "_revision_number": 1
+        }
+      ]
+    },
+    {
+      "request": "POST /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/messages/aaee04dcb46bafc8be24d8aa70b3b1beb7df5780/delete",
+      "response": {
+        "id": "aaee04dcb46bafc8be24d8aa70b3b1beb7df5780",
+        "author": {
+          "_account_id": 1000096,
+          "name": "John Doe",
+          "email": "john.doe@example.com",
+          "username": "jdoe"
+        },
+        "date": "2013-03-23 21:34:02.419000000",
+        "message": "Change message removed by: Administrator\nReason: spam",
+        "_revision_number": 1
+      }
+    },
+    {
+      "request": "POST /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/check.submit_requirement",
+      "response": {
+        "name": "Code-Review",
+        "status": "SATISFIED",
+        "submittability_expression_result": {
+          "expression": "label:Code-Review=+2",
+          "fulfilled": true,
+          "passingAtoms": [
+            "label:Code-Review=+2"
+          ]
+        },
+        "is_legacy": false
+      }
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/edit/foo/meta",
+      "response": {
+        "web_links": [
+          {
+            "show_on_side_by_side_diff_view": true,
+            "name": "side-by-side preview diff",
+            "image_url": "plugins/xdocs/static/sideBySideDiffPreview.png",
+            "url": "#/x/xdocs/c/42/1..0/README.md",
+            "target": "_self"
+          },
+          {
+            "show_on_unified_diff_view": true,
+            "name": "unified preview diff",
+            "image_url": "plugins/xdocs/static/unifiedDiffPreview.png",
+            "url": "#/x/xdocs/c/42/1..0/README.md,unified",
+            "target": "_self"
+          }
+        ]
+      }
+    },
+    {
+      "request": "GET /changes/myProject~65178/is-flows-enabled",
+      "response": {
+        "enabled": true
+      }
+    },
+    {
+      "request": "GET /changes/myProject~65178/flows-actions/",
+      "response": [
+        {
+          "name": "add-reviewer"
+        }
+      ]
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/reviewers/",
+      "response": [
+        {
+          "approvals": {
+            "Verified": "+1",
+            "Code-Review": "+2"
+          },
+          "_account_id": 1000096,
+          "name": "John Doe",
+          "email": "john.doe@example.com"
+        },
+        {
+          "approvals": {
+            "Verified": " 0",
+            "Code-Review": "-1"
+          },
+          "_account_id": 1000097,
+          "name": "Jane Roe",
+          "email": "jane.roe@example.com"
+        }
+      ]
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/suggest_reviewers?q=J",
+      "response": [
+        {
+          "account": {
+            "_account_id": 1000097,
+            "name": "Jane Roe",
+            "email": "jane.roe@example.com"
+          },
+          "count": 1
+        },
+        {
+          "group": {
+            "id": "4fd581c0657268f2bdcc26699fbf9ddb76e3a279",
+            "name": "Joiner"
+          },
+          "count": 5
+        }
+      ]
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/reviewers/john.doe@example.com",
+      "response": {
+        "approvals": {
+          "Verified": "+1",
+          "Code-Review": "+2"
+        },
+        "_account_id": 1000096,
+        "name": "John Doe",
+        "email": "john.doe@example.com"
+      }
+    },
+    {
+      "request": "POST /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/reviewers",
+      "response": {
+        "input": "MyProjectVerifiers",
+        "error": "The group My Group has 15 members. Do you want to add them all as reviewers?",
+        "confirm": true
+      }
+    },
+    {
+      "request": "POST /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/reviewers",
+      "response": {
+        "input": "John Doe \u003cun.registered@reviewer.com\u003e"
+      }
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/674ac754f91e64a0efb8087e59a176484bd534d1",
+      "response": {
+        "kind": "REWORK",
+        "_number": 1,
+        "ref": "refs/changes/97/97/1",
+        "fetch": {
+          "git": {
+            "url": "git://localhost/gerrit",
+            "ref": "refs/changes/97/97/1",
+            "commands": {
+              "Checkout": "git fetch git://localhost/gerrit refs/changes/97/97/1 \u0026\u0026 git checkout FETCH_HEAD",
+              "Cherry-Pick": "git fetch git://localhost/gerrit refs/changes/97/97/1 \u0026\u0026 git cherry-pick FETCH_HEAD",
+              "Format-Patch": "git fetch git://localhost/gerrit refs/changes/97/97/1 \u0026\u0026 git format-patch -1 --stdout FETCH_HEAD",
+              "Pull": "git pull git://localhost/gerrit refs/changes/97/97/1"
+            }
+          },
+          "http": {
+            "url": "http://myuser@127.0.0.1:8080/gerrit",
+            "ref": "refs/changes/97/97/1",
+            "commands": {
+              "Checkout": "git fetch http://myuser@127.0.0.1:8080/gerrit refs/changes/97/97/1 \u0026\u0026 git checkout FETCH_HEAD",
+              "Cherry-Pick": "git fetch http://myuser@127.0.0.1:8080/gerrit refs/changes/97/97/1 \u0026\u0026 git cherry-pick FETCH_HEAD",
+              "Format-Patch": "git fetch http://myuser@127.0.0.1:8080/gerrit refs/changes/97/97/1 \u0026\u0026 git format-patch -1 --stdout FETCH_HEAD",
+              "Pull": "git pull http://myuser@127.0.0.1:8080/gerrit refs/changes/97/97/1"
+            }
+          },
+          "ssh": {
+            "url": "ssh://myuser@*:29418/gerrit",
+            "ref": "refs/changes/97/97/1",
+            "commands": {
+              "Checkout": "git fetch ssh://myuser@*:29418/gerrit refs/changes/97/97/1 \u0026\u0026 git checkout FETCH_HEAD",
+              "Cherry-Pick": "git fetch ssh://myuser@*:29418/gerrit refs/changes/97/97/1 \u0026\u0026 git cherry-pick FETCH_HEAD",
+              "Format-Patch": "git fetch ssh://myuser@*:29418/gerrit refs/changes/97/97/1 \u0026\u0026 git format-patch -1 --stdout FETCH_HEAD",
+              "Pull": "git pull ssh://myuser@*:29418/gerrit refs/changes/97/97/1"
+            }
+          }
+        },
+        "commit": {
+          "commit": "674ac754f91e64a0efb8087e59a176484bd534d1",
+          "parents": [
+            {
+              "commit": "1eee2c9d8f352483781e772f35dc586a69ff5646",
+              "subject": "Migrate contributor agreements to All-Projects."
+            }
+          ],
+          "author": {
+            "name": "Shawn O. Pearce",
+            "email": "sop@google.com",
+            "date": "2012-04-24 18:08:08.000000000",
+            "tz": -420
+          },
+          "committer": {
+            "name": "Shawn O. Pearce",
+            "email": "sop@google.com",
+            "date": "2012-04-24 18:08:08.000000000",
+            "tz": -420
+          },
+          "subject": "Use an EventBus to manage star icons",
+          "message": "Use an EventBus to manage star icons\n\nImage widgets that need to ..."
+        },
+        "files": {
+          "gerrit-gwtui/src/main/java/com/google/gerrit/client/changes/ChangeCache.java": {
+            "lines_deleted": 8,
+            "size_delta": -412,
+            "size": 7782
+          },
+          "gerrit-gwtui/src/main/java/com/google/gerrit/client/changes/ChangeDetailCache.java": {
+            "lines_inserted": 1,
+            "size_delta": 23,
+            "size": 6762
+          },
+          "gerrit-gwtui/src/main/java/com/google/gerrit/client/changes/ChangeScreen.java": {
+            "lines_inserted": 11,
+            "lines_deleted": 19,
+            "size_delta": -298,
+            "size": 47023
+          },
+          "gerrit-gwtui/src/main/java/com/google/gerrit/client/changes/ChangeTable.java": {
+            "lines_inserted": 23,
+            "lines_deleted": 20,
+            "size_delta": 132,
+            "size": 17727
+          },
+          "gerrit-gwtui/src/main/java/com/google/gerrit/client/changes/StarCache.java": {
+            "status": "D",
+            "lines_deleted": 139,
+            "size_delta": -5512,
+            "size": 13098
+          },
+          "gerrit-gwtui/src/main/java/com/google/gerrit/client/changes/StarredChanges.java": {
+            "status": "A",
+            "lines_inserted": 204,
+            "size_delta": 8345,
+            "size": 8345
+          },
+          "gerrit-gwtui/src/main/java/com/google/gerrit/client/ui/Screen.java": {
+            "lines_deleted": 9,
+            "size_delta": -343,
+            "size": 5385
+          }
+        }
+      }
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/674ac754f91e64a0efb8087e59a176484bd534d1/commit",
+      "response": {
+        "commit": "674ac754f91e64a0efb8087e59a176484bd534d1",
+        "parents": [
+          {
+            "commit": "1eee2c9d8f352483781e772f35dc586a69ff5646",
+            "subject": "Migrate contributor agreements to All-Projects."
+          }
+        ],
+        "author": {
+          "name": "Shawn O. Pearce",
+          "email": "sop@google.com",
+          "date": "2012-04-24 18:08:08.000000000",
+          "tz": -420
+        },
+        "committer": {
+          "name": "Shawn O. Pearce",
+          "email": "sop@google.com",
+          "date": "2012-04-24 18:08:08.000000000",
+          "tz": -420
+        },
+        "subject": "Use an EventBus to manage star icons",
+        "message": "Use an EventBus to manage star icons\n\nImage widgets that need to ..."
+      }
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/674ac754f91e64a0efb8087e59a176484bd534d1/description",
+      "response": "Added Documentation"
+    },
+    {
+      "request": "PUT /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/674ac754f91e64a0efb8087e59a176484bd534d1/description",
+      "response": "Added Documentation"
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/7e30d802b890ec8d0be45b1cc2a8ef092bcfc858/mergelist",
+      "response": [
+        {
+          "commit": "674ac754f91e64a0efb8087e59a176484bd534d1",
+          "parents": [
+            {
+              "commit": "1eee2c9d8f352483781e772f35dc586a69ff5646",
+              "subject": "Migrate contributor agreements to All-Projects."
+            }
+          ],
+          "author": {
+            "name": "Shawn O. Pearce",
+            "email": "sop@google.com",
+            "date": "2012-04-24 18:08:08.000000000",
+            "tz": -420
+          },
+          "committer": {
+            "name": "Shawn O. Pearce",
+            "email": "sop@google.com",
+            "date": "2012-04-24 18:08:08.000000000",
+            "tz": -420
+          },
+          "subject": "Use an EventBus to manage star icons",
+          "message": "Use an EventBus to manage star icons\n\nImage widgets that need to ..."
+        }
+      ]
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/674ac754f91e64a0efb8087e59a176484bd534d1/actions'",
+      "response": {
+        "submit": {
+          "method": "POST",
+          "label": "Submit",
+          "title": "Submit patch set 1 into master",
+          "enabled": true
+        },
+        "cherrypick": {
+          "method": "POST",
+          "label": "Cherry Pick",
+          "title": "Cherry pick change to a different branch",
+          "enabled": true
+        }
+      }
+    },
+    {
+      "request": "POST /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/674ac754f91e64a0efb8087e59a176484bd534d1/review",
+      "response": {
+        "labels": {
+          "Code-Review": -1
+        }
+      }
+    },
+    {
+      "request": "POST /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/674ac754f91e64a0efb8087e59a176484bd534d1/submit",
+      "response": {
+        "id": "myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940",
+        "project": "myProject",
+        "branch": "master",
+        "change_id": "I8473b95934b5732ac55d26311a706c9c2bde9940",
+        "subject": "Implementing Feature X",
+        "status": "MERGED",
+        "created": "2013-02-01 09:59:32.126000000",
+        "updated": "2013-02-21 11:16:36.775000000",
+        "submitted": "2013-02-21 11:16:36.615000000",
+        "_number": 3965,
+        "owner": {
+          "name": "John Doe"
+        },
+        "current_revision_number": 2
+      }
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/current/submit_type",
+      "response": "MERGE_IF_NECESSARY"
+    },
+    {
+      "request": "POST /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/current/test.submit_type",
+      "response": "CHERRY_PICK"
+    },
+    {
+      "request": "POST /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/current/test.submit_rule?filters=SKIP",
+      "response": {
+        "status": "NOT_READY",
+        "reject": {
+          "Any-Label-Name": {}
+        }
+      }
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/674ac754f91e64a0efb8087e59a176484bd534d1/drafts/",
+      "response": {
+        "gerrit-server/src/main/java/com/google/gerrit/server/project/RefControl.java": [
+          {
+            "id": "TvcXrmjM",
+            "line": 23,
+            "message": "[nit] trailing whitespace",
+            "updated": "2013-02-26 15:40:43.986000000"
+          },
+          {
+            "id": "TveXwFiA",
+            "line": 49,
+            "in_reply_to": "TfYX-Iuo",
+            "message": "Done",
+            "updated": "2013-02-26 15:40:45.328000000"
+          }
+        ]
+      }
+    },
+    {
+      "request": "PUT /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/674ac754f91e64a0efb8087e59a176484bd534d1/drafts",
+      "response": {
+        "id": "TvcXrmjM",
+        "path": "gerrit-server/src/main/java/com/google/gerrit/server/project/RefControl.java",
+        "line": 23,
+        "message": "[nit] trailing whitespace",
+        "updated": "2013-02-26 15:40:43.986000000"
+      }
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/674ac754f91e64a0efb8087e59a176484bd534d1/drafts/TvcXrmjM",
+      "response": {
+        "id": "TvcXrmjM",
+        "path": "gerrit-server/src/main/java/com/google/gerrit/server/project/RefControl.java",
+        "line": 23,
+        "message": "[nit] trailing whitespace",
+        "updated": "2013-02-26 15:40:43.986000000"
+      }
+    },
+    {
+      "request": "PUT /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/674ac754f91e64a0efb8087e59a176484bd534d1/drafts/TvcXrmjM",
+      "response": {
+        "id": "TvcXrmjM",
+        "path": "gerrit-server/src/main/java/com/google/gerrit/server/project/RefControl.java",
+        "line": 23,
+        "message": "[nit] trailing whitespace",
+        "updated": "2013-02-26 15:40:43.986000000"
+      }
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/674ac754f91e64a0efb8087e59a176484bd534d1/comments/",
+      "response": {
+        "gerrit-server/src/main/java/com/google/gerrit/server/project/RefControl.java": [
+          {
+            "id": "TvcXrmjM",
+            "line": 23,
+            "message": "[nit] trailing whitespace",
+            "updated": "2013-02-26 15:40:43.986000000",
+            "author": {
+              "_account_id": 1000096,
+              "name": "John Doe",
+              "email": "john.doe@example.com"
+            }
+          },
+          {
+            "id": "TveXwFiA",
+            "line": 49,
+            "in_reply_to": "TfYX-Iuo",
+            "message": "Done",
+            "updated": "2013-02-26 15:40:45.328000000",
+            "author": {
+              "_account_id": 1000097,
+              "name": "Jane Roe",
+              "email": "jane.roe@example.com"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/674ac754f91e64a0efb8087e59a176484bd534d1/comments/TvcXrmjM",
+      "response": {
+        "id": "TvcXrmjM",
+        "path": "gerrit-server/src/main/java/com/google/gerrit/server/project/RefControl.java",
+        "line": 23,
+        "message": "[nit] trailing whitespace",
+        "updated": "2013-02-26 15:40:43.986000000",
+        "author": {
+          "_account_id": 1000096,
+          "name": "John Doe",
+          "email": "john.doe@example.com"
+        }
+      }
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/1/robotcomments",
+      "response": {
+        "main.c": [
+          {
+            "id": "TvcXrmjM",
+            "line": 23,
+            "message": "unused variable",
+            "updated": "2016-02-26 15:40:43.986000000",
+            "author": {
+              "_account_id": 1000110,
+              "name": "Code Analyzer"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/1/robotcomments/TvcXrmjM",
+      "response": {
+        "id": "TvcXrmjM",
+        "line": 23,
+        "message": "unused variable",
+        "updated": "2016-02-26 15:40:43.986000000",
+        "author": {
+          "_account_id": 1000110,
+          "name": "Code Analyzer"
+        }
+      }
+    },
+    {
+      "request": "POST /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/674ac754f91e64a0efb8087e59a176484bd534d1/comments/TvcXrmjM/delete",
+      "response": {
+        "id": "TvcXrmjM",
+        "path": "gerrit-server/src/main/java/com/google/gerrit/server/project/RefControl.java",
+        "line": 23,
+        "message": "Comment removed by: Administrator; Reason: contains confidential information",
+        "updated": "2013-02-26 15:40:43.986000000",
+        "author": {
+          "_account_id": 1000096,
+          "name": "John Doe",
+          "email": "john.doe@example.com"
+        }
+      }
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/4/ported_comments/",
+      "response": {
+        "gerrit-server/src/main/java/com/google/gerrit/server/project/RefControl.java": [
+          {
+            "id": "TvcXrmjM",
+            "patch_set": 2,
+            "line": 23,
+            "message": "[nit] trailing whitespace",
+            "updated": "2013-02-26 15:40:43.986000000",
+            "author": {
+              "_account_id": 1000096,
+              "name": "John Doe",
+              "email": "john.doe@example.com"
+            },
+            "unresolved": true
+          },
+          {
+            "id": "TveXwFiA",
+            "patch_set": 2,
+            "line": 23,
+            "in_reply_to": "TvcXrmjM",
+            "message": "Done",
+            "updated": "2013-02-26 15:40:45.328000000",
+            "author": {
+              "_account_id": 1000097,
+              "name": "Jane Roe",
+              "email": "jane.roe@example.com"
+            },
+            "unresolved": true
+          }
+        ]
+      }
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/674ac754f91e64a0efb8087e59a176484bd534d1/ported_drafts/",
+      "response": {
+        "gerrit-server/src/main/java/com/google/gerrit/server/project/RefControl.java": [
+          {
+            "id": "TveXwFiA",
+            "patch_set": 2,
+            "line": 23,
+            "in_reply_to": "TvcXrmjM",
+            "message": "Done",
+            "updated": "2013-02-26 15:40:45.328000000",
+            "unresolved": true
+          }
+        ]
+      }
+    },
+    {
+      "request": "POST /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/674ac754f91e64a0efb8087e59a176484bd534d1/fix:apply",
+      "response": {
+        "commit": {
+          "commit": "bd43e48c33d2b1a03485040eba38cefc505f7997",
+          "parents": [
+            {
+              "commit": "9825962f8ab6da89afebad3f5034db05fb4b7560"
+            }
+          ],
+          "author": {
+            "name": "John Doe",
+            "email": "john.doe@example.com",
+            "date": "2022-05-07 15:21:27.000000000",
+            "tz": 120
+          },
+          "committer": {
+            "name": "Jane Doe",
+            "email": "jane.doe@example.com",
+            "date": "2022-05-07 15:35:43.000000000",
+            "tz": 120
+          },
+          "subject": "Implement feature X",
+          "message": "Implement feature X\n\nWith this feature ..."
+        },
+        "base_patch_set_number": 1,
+        "base_revision": "86d87686ce0ef7f7c536bfc7e9a66f5a6fa5d658",
+        "ref": "refs/users/01/1000001/edit-1/1"
+      }
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/674ac754f91e64a0efb8087e59a176484bd534d1/files/",
+      "response": {
+        "/COMMIT_MSG": {
+          "status": "A",
+          "lines_inserted": 7,
+          "size_delta": 551,
+          "size": 551
+        },
+        "gerrit-server/src/main/java/com/google/gerrit/server/project/RefControl.java": {
+          "lines_inserted": 5,
+          "lines_deleted": 3,
+          "size_delta": 98,
+          "size": 23348
+        }
+      }
+    },
+    {
+      "request": "POST /changes/myProject~master~Id6f0b9d946791f8aba90ace53074eda565983452/revisions/1/fix:preview",
+      "response": {
+        "abcd.txt": {
+          "meta_a": {
+            "name": "abcd.txt",
+            "content_type": "text/plain",
+            "lines": 3
+          },
+          "meta_b": {
+            "name": "abcd.txt",
+            "content_type": "text/plain",
+            "lines": 3
+          },
+          "intraline_status": "OK",
+          "change_type": "MODIFIED",
+          "content": [
+            {
+              "ab": [
+                "ABCDEFGHI"
+              ]
+            },
+            {
+              "a": [
+                "JKLMNOPQR"
+              ],
+              "b": [
+                "JKabcdefgOPQR"
+              ],
+              "edit_a": [
+                [
+                  2,
+                  3
+                ]
+              ],
+              "edit_b": [
+                [
+                  2,
+                  7
+                ]
+              ]
+            },
+            {
+              "ab": [
+                ""
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": "POST /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/674ac754f91e64a0efb8087e59a176484bd534d1/cherrypick",
+      "response": {
+        "id": "myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9941",
+        "project": "myProject",
+        "branch": "release-branch",
+        "change_id": "I8473b95934b5732ac55d26311a706c9c2bde9941",
+        "subject": "Implementing Feature X",
+        "status": "NEW",
+        "created": "2013-02-01 09:59:32.126000000",
+        "updated": "2013-02-21 11:16:36.775000000",
+        "mergeable": true,
+        "insertions": 12,
+        "deletions": 11,
+        "_number": 3965,
+        "owner": {
+          "name": "John Doe"
+        },
+        "current_revision_number": 2
+      }
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/674ac754f91e64a0efb8087e59a176484bd534d1/reviewers/",
+      "response": [
+        {
+          "approvals": {
+            "Verified": "+1",
+            "Code-Review": "+2"
+          },
+          "_account_id": 1000096,
+          "name": "John Doe",
+          "email": "john.doe@example.com"
+        },
+        {
+          "approvals": {
+            "Verified": " 0",
+            "Code-Review": "-1"
+          },
+          "_account_id": 1000097,
+          "name": "Jane Roe",
+          "email": "jane.roe@example.com"
+        }
+      ]
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/revisions/674ac754f91e64a0efb8087e59a176484bd534d1/reviewers/John%20Doe/votes/",
+      "response": {
+        "Code-Review": -1,
+        "Verified": 1,
+        "Work-In-Progress": 1
+      }
+    },
+    {
+      "request": "GET /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/attention",
+      "response": [
+        {
+          "account": {
+            "_account_id": 1000096,
+            "name": "John Doe",
+            "email": "john.doe@example.com",
+            "username": "jdoe"
+          },
+          "last_update": "2013-02-01 09:59:32.126000000",
+          "reason": "reviewer or cc replied"
+        },
+        {
+          "account": {
+            "_account_id": 1000097,
+            "name": "Jane Doe",
+            "email": "jane.doe@example.com",
+            "username": "janedoe"
+          },
+          "last_update": "2013-02-01 09:59:32.126000000",
+          "reason": "Reviewer was added"
+        }
+      ]
+    },
+    {
+      "request": "POST /changes/myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940/attention",
+      "response": {
+        "_account_id": 1000096,
+        "name": "John Doe",
+        "email": "john.doe@example.com",
+        "username": "jdoe"
+      }
+    },
+    {
+      "request": "PUT /accounts/john",
+      "response": {
+        "_account_id": 1000195,
+        "name": "John Doe",
+        "email": "john.doe@example.com"
+      }
+    },
+    {
+      "request": "GET /accounts/self/detail",
+      "response": {
+        "registered_on": "2015-07-23 07:01:09.296000000",
+        "_account_id": 1000096,
+        "name": "John Doe",
+        "email": "john.doe@example.com",
+        "secondary_emails": [],
+        "username": "john",
+        "display_name": "Super John"
+      }
+    },
+    {
+      "request": "GET /accounts/self/name",
+      "response": "John Doe"
+    },
+    {
+      "request": "PUT /accounts/self/name",
+      "response": "John F. Doe"
+    },
+    {
+      "request": "GET /accounts/self/status",
+      "response": "Available"
+    },
+    {
+      "request": "PUT /accounts/self/status",
+      "response": "Out Of Office"
+    },
+    {
+      "request": "GET /accounts/self/username",
+      "response": "john.doe"
+    },
+    {
+      "request": "PUT /accounts/self/password.http",
+      "response": "ETxgpih8xrNs"
+    },
+    {
+      "request": "PUT /accounts/self/tokens/example",
+      "response": {
+        "id": "example",
+        "token": "someRandomToken",
+        "expiration": "2025-05-02 08:54:35.198000000"
+      }
+    },
+    {
+      "request": "GET /accounts/self/tokens",
+      "response": [
+        {
+          "id": "example",
+          "expiration": "2025-05-02 08:54:35.198000000"
+        },
+        {
+          "id": "another",
+          "expiration": "2025-05-04 08:54:35.198000000"
+        }
+      ]
+    },
+    {
+      "request": "GET /accounts/self/oauthtoken",
+      "response": {
+        "username": "johndow",
+        "resource_host": "gerrit.example.org",
+        "access_token": "eyJhbGciOiJSUzI1NiJ9.eyJqdGkiOi",
+        "provider_id": "oauth-plugin:oauth-provider",
+        "expires_at": "922337203775807",
+        "type": "bearer"
+      }
+    },
+    {
+      "request": "GET /accounts/self/emails",
+      "response": [
+        {
+          "email": "john.doe@example.com",
+          "preferred": true
+        },
+        {
+          "email": "j.doe@example.com"
+        }
+      ]
+    },
+    {
+      "request": "GET /accounts/self/emails/john.doe@example.com",
+      "response": {
+        "email": "john.doe@example.com",
+        "preferred": true
+      }
+    },
+    {
+      "request": "PUT /accounts/self/emails/john.doe@example.com",
+      "response": {
+        "email": "john.doe@example.com",
+        "pending_confirmation": true
+      }
+    },
+    {
+      "request": "GET /accounts/self/sshkeys",
+      "response": [
+        {
+          "seq": 1,
+          "ssh_public_key": "ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA0T...YImydZAw== john.doe@example.com",
+          "encoded_key": "AAAAB3NzaC1yc2EAAAABIwAAAQEA0T...YImydZAw==",
+          "algorithm": "ssh-rsa",
+          "comment": "john.doe@example.com",
+          "valid": true
+        }
+      ]
+    },
+    {
+      "request": "GET /accounts/self/sshkeys/1",
+      "response": {
+        "seq": 1,
+        "ssh_public_key": "ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA0T...YImydZAw== john.doe@example.com",
+        "encoded_key": "AAAAB3NzaC1yc2EAAAABIwAAAQEA0T...YImydZAw==",
+        "algorithm": "ssh-rsa",
+        "comment": "john.doe@example.com",
+        "valid": true
+      }
+    },
+    {
+      "request": "POST /accounts/self/sshkeys",
+      "response": {
+        "seq": 2,
+        "ssh_public_key": "ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA0T...YImydZAw== john.doe@example.com",
+        "encoded_key": "AAAAB3NzaC1yc2EAAAABIwAAAQEA0T...YImydZAw==",
+        "algorithm": "ssh-rsa",
+        "comment": "john.doe@example.com",
+        "valid": true
+      }
+    },
+    {
+      "request": "GET /accounts/self/capabilities",
+      "response": {
+        "queryLimit": {
+          "min": 0,
+          "max": 500
+        },
+        "emailReviewers": true
+      }
+    },
+    {
+      "request": "GET /a/accounts/self/capabilities",
+      "response": {
+        "administrateServer": true,
+        "queryLimit": {
+          "min": 0,
+          "max": 500
+        },
+        "createAccount": true,
+        "createGroup": true,
+        "createProject": true,
+        "emailReviewers": true,
+        "killTask": true,
+        "viewCaches": true,
+        "flushCaches": true,
+        "viewConnections": true,
+        "viewPlugins": true,
+        "viewQueue": true,
+        "runGC": true
+      }
+    },
+    {
+      "request": "GET /a/accounts/self/capabilities?q=createAccount\u0026q=createGroup",
+      "response": {
+        "createAccount": true,
+        "createGroup": true
+      }
+    },
+    {
+      "request": "GET /a/accounts/self/preferences.diff",
+      "response": {
+        "context": 10,
+        "ignore_whitespace": "IGNORE_ALL",
+        "intraline_difference": true,
+        "line_length": 100,
+        "cursor_blink_rate": 500,
+        "show_tabs": true,
+        "show_whitespace_errors": true,
+        "syntax_highlighting": true,
+        "tab_size": 8,
+        "font_size": 12
+      }
+    },
+    {
+      "request": "PUT /a/accounts/self/preferences.diff",
+      "response": {
+        "context": 10,
+        "ignore_whitespace": "IGNORE_ALL",
+        "intraline_difference": true,
+        "line_length": 100,
+        "show_line_endings": true,
+        "show_tabs": true,
+        "show_whitespace_errors": true,
+        "syntax_highlighting": true,
+        "tab_size": 8,
+        "font_size": 12
+      }
+    },
+    {
+      "request": "GET /a/accounts/self/preferences.edit",
+      "response": {
+        "tab_size": 4,
+        "line_length": 80,
+        "indent_unit": 2,
+        "cursor_blink_rate": 530,
+        "hide_top_menu": true,
+        "show_whitespace_errors": true,
+        "hide_line_numbers": true,
+        "match_brackets": true,
+        "line_wrapping": false,
+        "indent_with_tabs": false,
+        "auto_close_brackets": true
+      }
+    },
+    {
+      "request": "PUT /a/accounts/self/preferences.edit",
+      "response": {
+        "tab_size": 4,
+        "line_length": 80,
+        "cursor_blink_rate": 530,
+        "hide_top_menu": true,
+        "show_whitespace_errors": true,
+        "hide_line_numbers": true,
+        "match_brackets": true,
+        "auto_close_brackets": true
+      }
+    },
+    {
+      "request": "GET /a/accounts/self/external.ids",
+      "response": [
+        {
+          "identity": "username:john",
+          "email_address": "john.doe@example.com",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "request": "GET /a/accounts/self/agreements",
+      "response": [
+        {
+          "name": "Individual",
+          "description": "If you are going to be contributing code on your own, this is the one you want. You can sign this one online.",
+          "url": "static/cla_individual.html"
+        }
+      ]
+    },
+    {
+      "request": "POST /accounts/self/drafts.delete",
+      "response": [
+        {
+          "change": {
+            "id": "myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940",
+            "project": "myProject",
+            "branch": "master",
+            "change_id": "I8473b95934b5732ac55d26311a706c9c2bde9940",
+            "subject": "Implementing Feature X",
+            "status": "ABANDONED",
+            "created": "2013-02-01 09:59:32.126000000",
+            "updated": "2013-02-21 11:16:36.775000000",
+            "insertions": 34,
+            "deletions": 101,
+            "_number": 3965,
+            "owner": {
+              "name": "John Doe"
+            }
+          },
+          "deleted": [
+            {
+              "id": "TvcXrmjM",
+              "path": "gerrit-server/src/main/java/com/google/gerrit/server/project/RefControl.java",
+              "line": 23,
+              "message": "[nit] trailing whitespace",
+              "updated": "2013-02-26 15:40:43.986000000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "request": "PUT /accounts/self/agreements",
+      "response": "Individual"
+    },
+    {
+      "request": "GET /a/accounts/self/starred.changes",
+      "response": [
+        {
+          "id": "myProject~master~I8473b95934b5732ac55d26311a706c9c2bde9940",
+          "project": "myProject",
+          "branch": "master",
+          "change_id": "I8473b95934b5732ac55d26311a706c9c2bde9940",
+          "subject": "Implementing Feature X",
+          "status": "NEW",
+          "created": "2013-02-01 09:59:32.126000000",
+          "updated": "2013-02-21 11:16:36.775000000",
+          "starred": true,
+          "stars": [
+            "star"
+          ],
+          "mergeable": true,
+          "submittable": false,
+          "insertions": 145,
+          "deletions": 12,
+          "_number": 3965,
+          "owner": {
+            "name": "John Doe"
+          }
+        }
+      ]
+    }
+  ]
+}
