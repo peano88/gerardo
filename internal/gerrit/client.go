@@ -207,6 +207,18 @@ func (c *Client) Submit(ctx context.Context, change string) error {
 	return nil
 }
 
+// SetWorkInProgress marks a change as work in progress, or as ready for review.
+func (c *Client) SetWorkInProgress(ctx context.Context, change string, wip bool) error {
+	action := "ready"
+	if wip {
+		action = "wip"
+	}
+	if err := c.do(ctx, http.MethodPost, "/changes/"+url.PathEscape(change)+"/"+action, struct{}{}, nil); err != nil {
+		return fmt.Errorf("set %s: %w", action, err)
+	}
+	return nil
+}
+
 // Rebase rebases the current patch set of a change onto base, see RebaseInput.
 func (c *Client) Rebase(ctx context.Context, change, base string) error {
 	if err := c.do(ctx, http.MethodPost, "/changes/"+url.PathEscape(change)+"/rebase", RebaseInput{Base: base}, nil); err != nil {

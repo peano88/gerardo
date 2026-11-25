@@ -171,6 +171,9 @@ type dashboard struct {
 	height      int
 	notice      notice
 
+	// written is the number of writes done when the list was loaded.
+	written int64
+
 	showPreview bool
 	preview     viewport.Model
 	previews    map[int]*gerrit.ChangeInfo
@@ -202,6 +205,7 @@ func newResults(client *gerrit.Client, query string, self *gerrit.AccountInfo, r
 // Init loads the first page again, as large as what is already listed.
 func (d *dashboard) Init() tea.Cmd {
 	d.loading, d.loadingMore = true, false
+	d.written = written.Load()
 	d.gen++
 	return d.fetch(0, max(PageSize, len(d.changes)))
 }
@@ -302,6 +306,10 @@ func (d *dashboard) Update(msg tea.Msg) (screen, tea.Cmd) {
 		}
 
 	case focusMsg:
+		// Something was changed on the server since the list was loaded.
+		if written.Load() != d.written {
+			return d, tea.Batch(d.Init(), d.schedulePreview())
+		}
 		return d, d.schedulePreview()
 
 	case previewLoadedMsg:

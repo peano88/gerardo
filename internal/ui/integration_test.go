@@ -214,3 +214,33 @@ func TestIntegrationPreviewShowsCommit(t *testing.T) {
 	}
 	d.expect("commit " + info.CurrentRevision)
 }
+
+func TestIntegrationToggleWorkInProgress(t *testing.T) {
+	d := newDriver(t, "owner:self is:open")
+	d.expect("[WIP] Read the settings")
+	d.press("j", "enter")
+	if s, ok := d.top().(*changeScreen); !ok || s.number != 4221 {
+		t.Fatalf("should open the WIP change, got %T", d.top())
+	}
+	d.expect("W ready for review")
+
+	d.press("W")
+	if ch, _ := d.srv.Change(4221); ch.WorkInProgress {
+		t.Fatal("W should mark the change ready for review")
+	}
+	d.expect("marked ready for review")
+	if hint := d.top().(*changeScreen).wipHint(); hint != "set WIP" {
+		t.Fatalf("the hint should offer to set WIP again, got %q", hint)
+	}
+
+	// Back on the dashboard, the list is loaded again.
+	d.press("q")
+	if strings.Contains(d.view(), "[WIP]") {
+		t.Fatalf("the dashboard should show the change ready:\n%s", d.view())
+	}
+
+	d.press("enter", "W")
+	if ch, _ := d.srv.Change(4221); !ch.WorkInProgress {
+		t.Fatal("W again should mark it work in progress")
+	}
+}

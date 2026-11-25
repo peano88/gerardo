@@ -396,6 +396,8 @@ func (s *Server) route(r *http.Request, seg []string) (any, error) {
 		return byPath(c.Drafts), nil
 	case len(rest) == 1 && rest[0] == "submit" && method == http.MethodPost:
 		return s.submit(c)
+	case len(rest) == 1 && (rest[0] == "wip" || rest[0] == "ready") && method == http.MethodPost:
+		return nil, s.setWorkInProgress(c, rest[0] == "wip")
 	case len(rest) == 1 && rest[0] == "rebase" && method == http.MethodPost:
 		var in gerrit.RebaseInput
 		if err := decode(r, &in); err != nil {
@@ -685,6 +687,31 @@ func (s *Server) submit(c *Change) (any, error) {
 	c.Attention = nil
 	s.addMessage(c, s.self, len(c.PatchSets), "Change has been successfully merged")
 	return map[string]string{"status": c.Status}, nil
+}
+
+// setWorkInProgress marks c as work in progress or ready for review, the
+// latter adding its reviewers to the attention set.
+func (s *Server) setWorkInProgress(c *Change, wip bool) error {
+	switch {
+	case c.Status != "NEW":
+		return errorf(http.StatusConflict, "change %d is %s", c.Number, strings.ToLower(c.Status))
+	case wip && c.WorkInProgress:
+		return errorf(http.StatusConflict, "Change is already work in progress")
+	case !wip && !c.WorkInProgress:
+		return errorf(http.StatusConflict, "Change is already ready for review")
+	}
+	c.WorkInProgress = wip
+	if wip {
+		s.addMessage(c, s.self, len(c.PatchSets), "Set Work In Progress")
+		return nil
+	}
+	s.addMessage(c, s.self, len(c.PatchSets), "Set Ready For Review")
+	for _, id := range c.Reviewers {
+		if !slices.Contains(c.Attention, id) {
+			c.Attention = append(c.Attention, id)
+		}
+	}
+	return nil
 }
 
 func (s *Server) rebase(c *Change, base string) (any, error) {

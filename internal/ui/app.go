@@ -43,14 +43,19 @@ type quitMsg struct{}
 func quit() tea.Msg { return quitMsg{} }
 
 // writes counts the requests changing something on the server that are
-// running, so that quitting does not cut them off.
-var writes atomic.Int32
+// running, so that quitting does not cut them off; written counts those
+// done, so that lists know when to load again.
+var (
+	writes  atomic.Int32
+	written atomic.Int64
+)
 
 // write runs cmd as a request changing something on the server.
 func write(cmd tea.Cmd) tea.Cmd {
 	return func() tea.Msg {
 		writes.Add(1)
 		defer writes.Add(-1)
+		defer written.Add(1)
 		return cmd()
 	}
 }

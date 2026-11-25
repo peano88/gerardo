@@ -129,6 +129,11 @@ func clientRequests(t *testing.T) []string {
 	call("SetReview", c.SetReview(ctx, "4219", "1", gerrit.ReviewInput{Labels: map[string]int{"Code-Review": 2}}))
 	call("Submit", c.Submit(ctx, "4219"))
 	call("Rebase", c.Rebase(ctx, "4216", "4215"))
+	err = c.SetWorkInProgress(ctx, "4221", false)
+	if err == nil {
+		err = c.SetWorkInProgress(ctx, "4221", true)
+	}
+	call("SetWorkInProgress", err)
 
 	for i := range reflect.TypeFor[*gerrit.Client]().NumMethod() {
 		name := reflect.TypeFor[*gerrit.Client]().Method(i).Name

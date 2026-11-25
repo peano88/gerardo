@@ -180,6 +180,8 @@ func (s *changeScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
 			return s, nil
 		case "R":
 			return s, s.askRebase()
+		case "W":
+			return s, s.toggleWorkInProgress()
 		case "A":
 			return s, s.quickReply("Ack")
 		case "D":
@@ -450,6 +452,32 @@ func (s *changeScreen) openRebase(related []gerrit.RelatedChangeInfo) tea.Cmd {
 	return nil
 }
 
+// toggleWorkInProgress marks the change ready for review when it is work in
+// progress, and the other way round.
+func (s *changeScreen) toggleWorkInProgress() tea.Cmd {
+	c := s.change
+	switch {
+	case c == nil:
+		return nil
+	case c.Status != "NEW":
+		s.notice = notice{text: "only open changes can be work in progress"}
+		return nil
+	}
+	s.loading = true
+	wip, done := !c.WorkInProgress, "marked ready for review"
+	if wip {
+		done = "marked work in progress"
+	}
+	return s.action(done, func(ctx context.Context, n string) error { return s.client.SetWorkInProgress(ctx, n, wip) })
+}
+
+func (s *changeScreen) wipHint() string {
+	if s.change.WorkInProgress {
+		return "ready for review"
+	}
+	return "set WIP"
+}
+
 // action runs a change operation, reporting it with notice once done.
 func (s *changeScreen) action(notice string, do func(ctx context.Context, number string) error) tea.Cmd {
 	number := strconv.Itoa(s.number)
@@ -495,7 +523,7 @@ func (s *changeScreen) actionHints() []string {
 		if s.change.Submittable {
 			hints = append(hints, "S", "submit")
 		}
-		hints = append(hints, "R", "rebase")
+		hints = append(hints, "R", "rebase", "W", s.wipHint())
 	}
 	return append(hints, "m", s.messagesHint(), "y", "copy number", "r", "reload", "esc", "back")
 }
