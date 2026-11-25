@@ -159,6 +159,9 @@ func renderChangeLayout(c *gerrit.ChangeInfo, width int, view changeView) (strin
 	if c.Topic != "" {
 		where = append(where, "topic:"+c.Topic)
 	}
+	for _, h := range c.Hashtags {
+		where = append(where, "#"+h)
+	}
 	b.WriteString(dimStyle.Render(strings.Join(where, " · ")) + "\n")
 	if c.CurrentRevision != "" {
 		b.WriteString(dimStyle.Render("commit ") + c.CurrentRevision + "\n")

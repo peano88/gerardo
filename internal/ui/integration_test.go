@@ -244,3 +244,32 @@ func TestIntegrationToggleWorkInProgress(t *testing.T) {
 		t.Fatal("W again should mark it work in progress")
 	}
 }
+
+func TestIntegrationHashtags(t *testing.T) {
+	defer func(h []string) { Hashtags = h }(Hashtags)
+	Hashtags = []string{"auto-submit"}
+	d := newDriver(t, "change:4210")
+	d.press("enter", "#")
+	d.expect("Hashtags of change 4210", "1 [ ] #auto-submit")
+
+	// Tick the offered hashtag and type another one.
+	d.press("1", "down")
+	for _, r := range "urgent" {
+		d.press(string(r))
+	}
+	d.press("enter")
+	ch, _ := d.srv.Change(4210)
+	if strings.Join(ch.Hashtags, ",") != "auto-submit,urgent" {
+		t.Fatalf("got hashtags %v", ch.Hashtags)
+	}
+	if last := ch.Messages[len(ch.Messages)-1].Message; last != "Hashtag added: auto-submit, urgent" {
+		t.Fatalf("got message %q", last)
+	}
+	d.expect("added #auto-submit, added #urgent", "#auto-submit · #urgent")
+
+	// Unticking removes it.
+	d.press("#", "2", "enter")
+	if ch, _ := d.srv.Change(4210); strings.Join(ch.Hashtags, ",") != "auto-submit" {
+		t.Fatalf("urgent should be removed, got %v", ch.Hashtags)
+	}
+}

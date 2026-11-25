@@ -22,6 +22,9 @@ var (
 	PageSize = 50
 	// GroupByProject groups the change lists by project by default.
 	GroupByProject = true
+	// Hashtags are offered as one-key toggles when editing the hashtags of
+	// a change, such as one a bot submits changes on.
+	Hashtags []string
 )
 
 // span styles the bytes [start, end) of a line.

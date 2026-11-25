@@ -55,6 +55,7 @@ type Change struct {
 	Project        string
 	Branch         string
 	Topic          string
+	Hashtags       []string
 	Subject        string
 	Status         string
 	WorkInProgress bool
@@ -396,6 +397,12 @@ func (s *Server) route(r *http.Request, seg []string) (any, error) {
 		return byPath(c.Drafts), nil
 	case len(rest) == 1 && rest[0] == "submit" && method == http.MethodPost:
 		return s.submit(c)
+	case len(rest) == 1 && rest[0] == "hashtags" && method == http.MethodPost:
+		var in gerrit.HashtagsInput
+		if err := decode(r, &in); err != nil {
+			return nil, err
+		}
+		return s.setHashtags(c, in)
 	case len(rest) == 1 && (rest[0] == "wip" || rest[0] == "ready") && method == http.MethodPost:
 		return nil, s.setWorkInProgress(c, rest[0] == "wip")
 	case len(rest) == 1 && rest[0] == "rebase" && method == http.MethodPost:
@@ -689,6 +696,57 @@ func (s *Server) submit(c *Change) (any, error) {
 	return map[string]string{"status": c.Status}, nil
 }
 
+// setHashtags adds and removes hashtags, recording each in a message as
+// Gerrit does.
+func (s *Server) setHashtags(c *Change, in gerrit.HashtagsInput) ([]string, error) {
+	clean := func(tags []string) ([]string, error) {
+		var out []string
+		for _, t := range tags {
+			t = strings.TrimPrefix(strings.TrimSpace(t), "#")
+			if strings.Contains(t, ",") {
+				return nil, errorf(http.StatusBadRequest, "hashtags may not contain commas")
+			}
+			if t != "" {
+				out = append(out, t)
+			}
+		}
+		return out, nil
+	}
+	add, err := clean(in.Add)
+	if err != nil {
+		return nil, err
+	}
+	remove, err := clean(in.Remove)
+	if err != nil {
+		return nil, err
+	}
+	var added, removed []string
+	for _, t := range add {
+		if !slices.Contains(c.Hashtags, t) {
+			c.Hashtags = append(c.Hashtags, t)
+			added = append(added, t)
+		}
+	}
+	for _, t := range remove {
+		if i := slices.Index(c.Hashtags, t); i >= 0 {
+			c.Hashtags = slices.Delete(c.Hashtags, i, i+1)
+			removed = append(removed, t)
+		}
+	}
+	slices.Sort(c.Hashtags)
+	var lines []string
+	if len(added) > 0 {
+		lines = append(lines, "Hashtag added: "+strings.Join(added, ", "))
+	}
+	if len(removed) > 0 {
+		lines = append(lines, "Hashtag removed: "+strings.Join(removed, ", "))
+	}
+	if len(lines) > 0 {
+		s.addMessage(c, s.self, len(c.PatchSets), strings.Join(lines, "\n"))
+	}
+	return slices.Clone(c.Hashtags), nil
+}
+
 // setWorkInProgress marks c as work in progress or ready for review, the
 // latter adding its reviewers to the attention set.
 func (s *Server) setWorkInProgress(c *Change, wip bool) error {
@@ -795,6 +853,7 @@ func (s *Server) info(c *Change, opts []string) *gerrit.ChangeInfo {
 		Project:        c.Project,
 		Branch:         c.Branch,
 		Topic:          c.Topic,
+		Hashtags:       slices.Clone(c.Hashtags),
 		Subject:        c.Subject,
 		Status:         c.Status,
 		WorkInProgress: c.WorkInProgress,

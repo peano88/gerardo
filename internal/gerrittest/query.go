@@ -2,6 +2,7 @@ package gerrittest
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -177,6 +178,9 @@ func operator(op, value string) (predicate, error) {
 		return func(_ *Server, c *Change) bool { return c.Project == value }, nil
 	case "branch":
 		return func(_ *Server, c *Change) bool { return c.Branch == value }, nil
+	case "hashtag":
+		value = strings.TrimPrefix(value, "#")
+		return func(_ *Server, c *Change) bool { return slices.Contains(c.Hashtags, value) }, nil
 	case "topic":
 		return func(_ *Server, c *Change) bool { return c.Topic == value }, nil
 	case "change":

@@ -128,6 +128,12 @@ type RelatedChangeInfo struct {
 	Commit                CommitInfo `json:"commit"`
 }
 
+// HashtagsInput adds hashtags to a change and removes others.
+type HashtagsInput struct {
+	Add    []string `json:"add,omitempty"`
+	Remove []string `json:"remove,omitempty"`
+}
+
 // RebaseInput is the target of a rebase: a change number, optionally with
 // "/patchset", a commit SHA-1 or ref, or "" for the tip of the branch.
 type RebaseInput struct {
@@ -183,6 +189,7 @@ type ChangeInfo struct {
 	Project                string                  `json:"project"`
 	Branch                 string                  `json:"branch"`
 	Topic                  string                  `json:"topic"`
+	Hashtags               []string                `json:"hashtags"`
 	Subject                string                  `json:"subject"`
 	Status                 string                  `json:"status"`
 	WorkInProgress         bool                    `json:"work_in_progress"`

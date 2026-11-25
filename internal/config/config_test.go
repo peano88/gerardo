@@ -21,6 +21,7 @@ visible_paths = [
   # "accounts/old",
   "accounts/billing",
 ]
+hashtags = ["auto-submit"]
 `
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
@@ -33,6 +34,7 @@ visible_paths = [
 	want.URL, want.Query, want.SideBySide, want.PageSize = "https://review.example.com", "status:open #tag", true, 25
 	want.HiddenPaths = []string{"accounts/*", "legacy/*"}
 	want.VisiblePaths = []string{"accounts/pkg", "accounts/billing"}
+	want.Hashtags = []string{"auto-submit"}
 	if !reflect.DeepEqual(c, want) {
 		t.Fatalf("got %+v, want %+v", c, want)
 	}

@@ -24,6 +24,7 @@ url = "https://review.example.com"
 query = "is:open (owner:self OR reviewer:self)"
 side_by_side = true
 hidden_paths = ["legacy/*"]   # hide changes touching only these
+hashtags = ["auto-submit"]    # offered when editing hashtags (#)
 ```
 
 Credentials come from `~/.netrc` (`machine review.example.com login <user> password <http-password>`, the HTTP password from Gerrit's settings) or `GERRIT_USER` / `GERRIT_PASSWORD`.

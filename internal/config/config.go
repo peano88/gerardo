@@ -11,6 +11,7 @@
 //	  "services/accounts/pkg",
 //	  "services/accounts/billing",
 //	]
+//	hashtags = ["auto-submit"]
 package config
 
 import (
@@ -36,6 +37,8 @@ type Config struct {
 	// matching them, and not VisiblePaths, are left out of the change lists.
 	HiddenPaths  []string `toml:"hidden_paths"`
 	VisiblePaths []string `toml:"visible_paths"`
+	// Hashtags are offered when editing the hashtags of a change.
+	Hashtags []string `toml:"hashtags"`
 }
 
 // Default returns the settings used when the file does not set them.

@@ -76,9 +76,11 @@ func run() error {
 				demoQuery = *query
 			}
 		})
+		ui.Hashtags = []string{"auto-submit"}
 		return runDemo(demoQuery)
 	}
 	ui.SetPathFilter(cfg.HiddenPaths, cfg.VisiblePaths)
+	ui.Hashtags = cfg.Hashtags
 	if *baseURL == "" {
 		return fmt.Errorf("no Gerrit server: set url = \"https://review.example.com\" in %s, GERRIT_URL or -url", configPath)
 	}

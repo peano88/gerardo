@@ -34,6 +34,7 @@ var entities = map[reflect.Type]string{
 	reflect.TypeFor[gerrit.DiffFileMeta]():      "DiffFileMetaInfo",
 	reflect.TypeFor[gerrit.DiffInfo]():          "DiffInfo",
 	reflect.TypeFor[gerrit.FileInfo]():          "FileInfo",
+	reflect.TypeFor[gerrit.HashtagsInput]():     "HashtagsInput",
 	reflect.TypeFor[gerrit.LabelInfo]():         "LabelInfo",
 	reflect.TypeFor[gerrit.RebaseInput]():       "RebaseInput",
 	reflect.TypeFor[gerrit.RelatedChangeInfo](): "RelatedChangeAndCommitInfo",
@@ -50,6 +51,7 @@ var responses = map[string]func() any{
 	"GET /changes/":                                           func() any { return &[]gerrit.ChangeInfo{} },
 	"GET /changes/{change-id}":                                func() any { return &gerrit.ChangeInfo{} },
 	"GET /changes/{change-id}/comments":                       func() any { return &comments{} },
+	"POST /changes/{change-id}/hashtags":                      func() any { return &[]string{} },
 	"GET /changes/{change-id}/drafts":                         func() any { return &comments{} },
 	"GET /changes/{change-id}/revisions/{revision-id}/files/": func() any { return &map[string]gerrit.FileInfo{} },
 	"GET /changes/{change-id}/revisions/{revision-id}/files/{file-id}/diff": func() any { return &gerrit.DiffInfo{} },
@@ -134,6 +136,8 @@ func clientRequests(t *testing.T) []string {
 		err = c.SetWorkInProgress(ctx, "4221", true)
 	}
 	call("SetWorkInProgress", err)
+	_, err = c.SetHashtags(ctx, "4210", []string{"auto-submit"}, []string{"none"})
+	call("SetHashtags", err)
 
 	for i := range reflect.TypeFor[*gerrit.Client]().NumMethod() {
 		name := reflect.TypeFor[*gerrit.Client]().Method(i).Name

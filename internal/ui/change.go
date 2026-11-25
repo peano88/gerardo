@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/charmbracelet/bubbles/viewport"
@@ -182,6 +183,11 @@ func (s *changeScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
 			return s, s.askRebase()
 		case "W":
 			return s, s.toggleWorkInProgress()
+		case "#":
+			if s.change != nil {
+				s.dialog = newHashtagDialog(s.change, Hashtags, s.setHashtags)
+			}
+			return s, nil
 		case "A":
 			return s, s.quickReply("Ack")
 		case "D":
@@ -452,6 +458,21 @@ func (s *changeScreen) openRebase(related []gerrit.RelatedChangeInfo) tea.Cmd {
 	return nil
 }
 
+// setHashtags adds and removes hashtags of the change.
+func (s *changeScreen) setHashtags(add, remove []string) tea.Cmd {
+	var done []string
+	for _, h := range add {
+		done = append(done, "added #"+h)
+	}
+	for _, h := range remove {
+		done = append(done, "removed #"+h)
+	}
+	return s.action(strings.Join(done, ", "), func(ctx context.Context, n string) error {
+		_, err := s.client.SetHashtags(ctx, n, add, remove)
+		return err
+	})
+}
+
 // toggleWorkInProgress marks the change ready for review when it is work in
 // progress, and the other way round.
 func (s *changeScreen) toggleWorkInProgress() tea.Cmd {
@@ -525,7 +546,7 @@ func (s *changeScreen) actionHints() []string {
 		}
 		hints = append(hints, "R", "rebase", "W", s.wipHint())
 	}
-	return append(hints, "m", s.messagesHint(), "y", "copy number", "r", "reload", "esc", "back")
+	return append(hints, "#", "hashtags", "m", s.messagesHint(), "y", "copy number", "r", "reload", "esc", "back")
 }
 
 func (s *changeScreen) messagesHint() string {
