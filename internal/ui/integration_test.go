@@ -223,16 +223,15 @@ func TestIntegrationToggleWorkInProgress(t *testing.T) {
 	if s, ok := d.top().(*changeScreen); !ok || s.number != 4221 {
 		t.Fatalf("should open the WIP change, got %T", d.top())
 	}
-	d.expect("W ready for review")
+	if status := ansiRe.ReplaceAllString(d.top().Status(), ""); strings.Contains(status, "W ") {
+		t.Fatalf("W is in the actions menu, not in the hints: %s", status)
+	}
 
 	d.press("W")
 	if ch, _ := d.srv.Change(4221); ch.WorkInProgress {
 		t.Fatal("W should mark the change ready for review")
 	}
 	d.expect("marked ready for review")
-	if hint := d.top().(*changeScreen).wipHint(); hint != "set WIP" {
-		t.Fatalf("the hint should offer to set WIP again, got %q", hint)
-	}
 
 	// Back on the dashboard, the list is loaded again.
 	d.press("q")

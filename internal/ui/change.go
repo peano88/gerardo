@@ -509,13 +509,6 @@ func (s *changeScreen) toggleWorkInProgress() tea.Cmd {
 	return s.action(done, func(ctx context.Context, n string) error { return s.client.SetWorkInProgress(ctx, n, wip) })
 }
 
-func (s *changeScreen) wipHint() string {
-	if s.change.WorkInProgress {
-		return "ready for review"
-	}
-	return "set WIP"
-}
-
 // action runs a change operation, reporting it with notice once done.
 func (s *changeScreen) action(notice string, do func(ctx context.Context, number string) error) tea.Cmd {
 	number := strconv.Itoa(s.number)
@@ -561,7 +554,7 @@ func (s *changeScreen) actionHints() []string {
 		if s.change.Submittable {
 			hints = append(hints, "S", "submit")
 		}
-		hints = append(hints, "R", "rebase", "W", s.wipHint())
+		hints = append(hints, "R", "rebase")
 	}
 	return append(hints, "#", "hashtags", "m", s.messagesHint(), "y", "copy number", "r", "reload", "esc", "back")
 }
