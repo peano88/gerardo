@@ -22,6 +22,7 @@ import (
 // entities maps the API types of the client to the documented entities.
 var entities = map[reflect.Type]string{
 	reflect.TypeFor[gerrit.AccountInfo]():       "AccountInfo",
+	reflect.TypeFor[gerrit.ActionInfo]():        "ActionInfo",
 	reflect.TypeFor[gerrit.ApprovalInfo]():      "ApprovalInfo",
 	reflect.TypeFor[gerrit.AttentionSetInfo]():  "AttentionSetInfo",
 	reflect.TypeFor[gerrit.ChangeInfo]():        "ChangeInfo",
@@ -30,6 +31,7 @@ var entities = map[reflect.Type]string{
 	reflect.TypeFor[gerrit.CommentInput]():      "CommentInput",
 	reflect.TypeFor[gerrit.CommentRange]():      "CommentRange",
 	reflect.TypeFor[gerrit.CommitInfo]():        "CommitInfo",
+	reflect.TypeFor[gerrit.CherryPickInput]():   "CherryPickInput",
 	reflect.TypeFor[gerrit.DiffContent]():       "DiffContent",
 	reflect.TypeFor[gerrit.DiffFileMeta]():      "DiffFileMetaInfo",
 	reflect.TypeFor[gerrit.DiffInfo]():          "DiffInfo",
@@ -46,14 +48,16 @@ type comments = map[string][]gerrit.CommentInfo
 
 // responses are the types the client decodes the responses of endpoints into.
 var responses = map[string]func() any{
-	"GET /accounts/":                                          func() any { return &[]gerrit.AccountInfo{} },
-	"GET /accounts/{account-id}":                              func() any { return &gerrit.AccountInfo{} },
-	"GET /changes/":                                           func() any { return &[]gerrit.ChangeInfo{} },
-	"GET /changes/{change-id}":                                func() any { return &gerrit.ChangeInfo{} },
-	"GET /changes/{change-id}/comments":                       func() any { return &comments{} },
-	"POST /changes/{change-id}/hashtags":                      func() any { return &[]string{} },
-	"GET /changes/{change-id}/drafts":                         func() any { return &comments{} },
-	"GET /changes/{change-id}/revisions/{revision-id}/files/": func() any { return &map[string]gerrit.FileInfo{} },
+	"GET /accounts/":                                                        func() any { return &[]gerrit.AccountInfo{} },
+	"GET /accounts/{account-id}":                                            func() any { return &gerrit.AccountInfo{} },
+	"GET /changes/":                                                         func() any { return &[]gerrit.ChangeInfo{} },
+	"GET /changes/{change-id}":                                              func() any { return &gerrit.ChangeInfo{} },
+	"GET /changes/{change-id}/comments":                                     func() any { return &comments{} },
+	"POST /changes/{change-id}/hashtags":                                    func() any { return &[]string{} },
+	"POST /changes/{change-id}/revert":                                      func() any { return &gerrit.ChangeInfo{} },
+	"POST /changes/{change-id}/revisions/{revision-id}/cherrypick":          func() any { return &gerrit.ChangeInfo{} },
+	"GET /changes/{change-id}/drafts":                                       func() any { return &comments{} },
+	"GET /changes/{change-id}/revisions/{revision-id}/files/":               func() any { return &map[string]gerrit.FileInfo{} },
 	"GET /changes/{change-id}/revisions/{revision-id}/files/{file-id}/diff": func() any { return &gerrit.DiffInfo{} },
 	"GET /changes/{change-id}/revisions/{revision-id}/ported_comments":      func() any { return &comments{} },
 	"GET /changes/{change-id}/revisions/{revision-id}/related": func() any {
@@ -138,6 +142,13 @@ func clientRequests(t *testing.T) []string {
 	call("SetWorkInProgress", err)
 	_, err = c.SetHashtags(ctx, "4210", []string{"auto-submit"}, []string{"none"})
 	call("SetHashtags", err)
+	_, err = c.Revert(ctx, "4219")
+	call("Revert", err)
+	_, err = c.CherryPick(ctx, "4210", "3", "release")
+	call("CherryPick", err)
+	call("Abandon", c.Abandon(ctx, "4210"))
+	call("Restore", c.Restore(ctx, "4210"))
+	call("RunAction", c.RunAction(ctx, "4215", "", "demo~nudge", gerrit.ActionInfo{Method: "POST"}))
 
 	for i := range reflect.TypeFor[*gerrit.Client]().NumMethod() {
 		name := reflect.TypeFor[*gerrit.Client]().Method(i).Name
@@ -197,6 +208,11 @@ func TestContract(t *testing.T) {
 
 			used := map[string]bool{}
 			for _, r := range requests {
+				// The views of plugins, named plugin~view, are documented
+				// by the plugins.
+				if strings.Contains(r[strings.LastIndex(r, "/")+1:], "~") {
+					continue
+				}
 				e, ok := spec.Endpoint(r)
 				if !ok {
 					t.Errorf("%s is not a documented endpoint", r)

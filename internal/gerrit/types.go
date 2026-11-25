@@ -166,11 +166,26 @@ type FileInfo struct {
 
 // RevisionInfo describes a patch set.
 type RevisionInfo struct {
-	Number   int                 `json:"_number"`
-	Created  Timestamp           `json:"created"`
-	Uploader *AccountInfo        `json:"uploader"`
-	Commit   *CommitInfo         `json:"commit"`
-	Files    map[string]FileInfo `json:"files"`
+	Number   int                   `json:"_number"`
+	Created  Timestamp             `json:"created"`
+	Uploader *AccountInfo          `json:"uploader"`
+	Commit   *CommitInfo           `json:"commit"`
+	Files    map[string]FileInfo   `json:"files"`
+	Actions  map[string]ActionInfo `json:"actions"`
+}
+
+// ActionInfo is an operation the user may run on a change or a revision, by
+// sending Method to the REST view named after the key of the action.
+type ActionInfo struct {
+	Method  string `json:"method"`
+	Label   string `json:"label"`
+	Title   string `json:"title"`
+	Enabled bool   `json:"enabled"`
+}
+
+// CherryPickInput is the target of a cherry-pick.
+type CherryPickInput struct {
+	Destination string `json:"destination"`
 }
 
 // ChangeMessageInfo is a top-level message posted on a change.
@@ -204,6 +219,7 @@ type ChangeInfo struct {
 	CurrentRevision        string                  `json:"current_revision"`
 	Revisions              map[string]RevisionInfo `json:"revisions"`
 	Messages               []ChangeMessageInfo     `json:"messages"`
+	Actions                map[string]ActionInfo   `json:"actions"`
 	// MoreChanges is set on the last change of a query page when more match.
 	MoreChanges bool `json:"_more_changes"`
 	// AttentionSet holds the accounts expected to act next, keyed by account ID.

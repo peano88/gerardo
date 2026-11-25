@@ -122,6 +122,10 @@ func (s *Server) AddAccount(a gerrit.AccountInfo) {
 func (s *Server) AddChange(c Change) *Change {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	return s.addChange(c)
+}
+
+func (s *Server) addChange(c Change) *Change {
 	if c.Number == 0 {
 		c.Number = 1
 		for _, other := range s.changes {
@@ -397,6 +401,15 @@ func (s *Server) route(r *http.Request, seg []string) (any, error) {
 		return byPath(c.Drafts), nil
 	case len(rest) == 1 && rest[0] == "submit" && method == http.MethodPost:
 		return s.submit(c)
+	case len(rest) == 1 && rest[0] == "abandon" && method == http.MethodPost:
+		return nil, s.setStatus(c, "NEW", "ABANDONED", "Abandoned")
+	case len(rest) == 1 && rest[0] == "restore" && method == http.MethodPost:
+		return nil, s.setStatus(c, "ABANDONED", "NEW", "Restored")
+	case len(rest) == 1 && rest[0] == "revert" && method == http.MethodPost:
+		return s.revert(c)
+	case len(rest) == 1 && rest[0] == nudgeAction && method == http.MethodPost:
+		s.nudge(c)
+		return nil, nil
 	case len(rest) == 1 && rest[0] == "hashtags" && method == http.MethodPost:
 		var in gerrit.HashtagsInput
 		if err := decode(r, &in); err != nil {
@@ -435,6 +448,12 @@ func (s *Server) route(r *http.Request, seg []string) (any, error) {
 		return s.diff(c, base, ps, rest[1])
 	case len(rest) == 1 && rest[0] == "ported_comments" && method == http.MethodGet:
 		return s.ported(c, ps), nil
+	case len(rest) == 1 && rest[0] == "cherrypick" && method == http.MethodPost:
+		var in gerrit.CherryPickInput
+		if err := decode(r, &in); err != nil {
+			return nil, err
+		}
+		return s.cherryPick(c, ps, in.Destination)
 	case len(rest) == 1 && rest[0] == "related" && method == http.MethodGet:
 		return s.related(c), nil
 	case len(rest) == 1 && rest[0] == "review" && method == http.MethodPost:
@@ -696,6 +715,112 @@ func (s *Server) submit(c *Change) (any, error) {
 	return map[string]string{"status": c.Status}, nil
 }
 
+// nudgeAction is the action of a made-up plugin, reminding the reviewers of
+// a change that it waits on them.
+const nudgeAction = "demo~nudge"
+
+// changeActions are the actions the user may run on c.
+func (s *Server) changeActions(c *Change) map[string]gerrit.ActionInfo {
+	post := func(label, title string) gerrit.ActionInfo {
+		return gerrit.ActionInfo{Method: http.MethodPost, Label: label, Title: title, Enabled: true}
+	}
+	actions := map[string]gerrit.ActionInfo{"hashtags": post("Edit Hashtags", "Edit the hashtags of the change")}
+	switch c.Status {
+	case "NEW":
+		actions["abandon"] = post("Abandon", "Abandon the change")
+		actions["move"] = post("Move Change", "Move the change to a different destination branch")
+		actions[nudgeAction] = post("Nudge", "Remind the reviewers that the change waits on them")
+		if c.WorkInProgress {
+			actions["ready"] = post("Start Review", "Set Ready For Review")
+		} else {
+			actions["wip"] = post("Mark as work in progress", "Set Work In Progress")
+		}
+	case "ABANDONED":
+		actions["restore"] = post("Restore", "Restore the change")
+	case "MERGED":
+		actions["revert"] = post("Revert", "Revert the change")
+	}
+	return actions
+}
+
+// revisionActions are the actions the user may run on the current patch set
+// of c.
+func (s *Server) revisionActions(c *Change) map[string]gerrit.ActionInfo {
+	actions := map[string]gerrit.ActionInfo{
+		"cherrypick": {Method: http.MethodPost, Label: "Cherry Pick", Title: "Cherry pick change to a different branch", Enabled: true},
+	}
+	if c.Status == "NEW" {
+		actions["submit"] = gerrit.ActionInfo{Method: http.MethodPost, Label: "Submit", Title: "Submit patch set", Enabled: submittable(c)}
+		actions["rebase"] = gerrit.ActionInfo{Method: http.MethodPost, Label: "Rebase", Title: "Rebase onto tip of branch or parent change", Enabled: true}
+	}
+	return actions
+}
+
+// setStatus moves c from status from to status to, as abandon and restore do.
+func (s *Server) setStatus(c *Change, from, to, message string) error {
+	if c.Status != from {
+		return errorf(http.StatusConflict, "change is %s", strings.ToLower(c.Status))
+	}
+	c.Status = to
+	if to != "NEW" {
+		c.Attention = nil
+	}
+	s.addMessage(c, s.self, len(c.PatchSets), message)
+	return nil
+}
+
+// revert creates a change undoing the merged c, by the authenticated user.
+func (s *Server) revert(c *Change) (*gerrit.ChangeInfo, error) {
+	if c.Status != "MERGED" {
+		return nil, errorf(http.StatusConflict, "change is %s", strings.ToLower(c.Status))
+	}
+	cur := len(c.PatchSets)
+	files := map[string]string{}
+	for p := range s.files(c, 0, cur) {
+		if p == gerrit.CommitMessage {
+			continue
+		}
+		if content, ok := c.Base[p]; ok {
+			files[p] = content
+		} else {
+			files[p] = Deleted
+		}
+	}
+	subject := fmt.Sprintf("Revert %q", c.Subject)
+	r := s.addChange(Change{
+		Project: c.Project, Branch: c.Branch, Subject: subject, Owner: s.self,
+		Base:      c.tree(cur),
+		PatchSets: []PatchSet{{Files: files, Message: fmt.Sprintf("%s\n\nThis reverts commit %s.", subject, commitID(c.Number, cur))}},
+	})
+	delete(r.Base, gerrit.CommitMessage)
+	s.addMessage(c, s.self, cur, fmt.Sprintf("Created a revert of this change as %d", r.Number))
+	return s.info(r, nil), nil
+}
+
+// cherryPick creates a change applying patch set ps of c onto destination.
+func (s *Server) cherryPick(c *Change, ps int, destination string) (*gerrit.ChangeInfo, error) {
+	if destination == "" {
+		return nil, errorf(http.StatusBadRequest, "destination must be non-empty")
+	}
+	p := c.PatchSets[ps-1]
+	pick := s.addChange(Change{
+		Project: c.Project, Branch: destination, Subject: c.Subject, Owner: s.self,
+		Base: c.Base, PatchSets: []PatchSet{{Files: p.Files, Message: p.Message}},
+	})
+	s.addMessage(c, s.self, ps, fmt.Sprintf("Patch Set %d: Cherry Picked\n\nThis patchset was cherry picked to branch %s as change %d.", ps, destination, pick.Number))
+	return s.info(pick, nil), nil
+}
+
+// nudge puts the reviewers of c in its attention set.
+func (s *Server) nudge(c *Change) {
+	for _, id := range c.Reviewers {
+		if !slices.Contains(c.Attention, id) {
+			c.Attention = append(c.Attention, id)
+		}
+	}
+	s.addMessage(c, s.self, len(c.PatchSets), "Reminded the reviewers")
+}
+
 // setHashtags adds and removes hashtags, recording each in a message as
 // Gerrit does.
 func (s *Server) setHashtags(c *Change, in gerrit.HashtagsInput) ([]string, error) {
@@ -897,6 +1022,9 @@ func (s *Server) info(c *Change, opts []string) *gerrit.ChangeInfo {
 			info.PermittedLabels[name] = slices.Sorted(maps.Keys(values))
 		}
 	}
+	if has("CHANGE_ACTIONS") {
+		info.Actions = s.changeActions(c)
+	}
 	if has("SUBMITTABLE") {
 		info.Submittable = submittable(c)
 	}
@@ -915,6 +1043,9 @@ func (s *Server) info(c *Change, opts []string) *gerrit.ChangeInfo {
 			if has("CURRENT_COMMIT") && ps == cur {
 				subject, _, _ := strings.Cut(p.Message, "\n")
 				rev.Commit = &gerrit.CommitInfo{Parents: []gerrit.CommitInfo{{Commit: p.parent}}, Subject: subject, Message: p.Message + "\n"}
+			}
+			if has("CURRENT_ACTIONS") && ps == cur {
+				rev.Actions = s.revisionActions(c)
 			}
 			if has("CURRENT_FILES") && ps == cur {
 				rev.Files = s.files(c, 0, ps)

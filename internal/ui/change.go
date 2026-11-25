@@ -105,6 +105,18 @@ func (s *changeScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
 		}
 		return s, s.openRebase(msg.related)
 
+	case actionPickedMsg:
+		s.loading = false
+		return s, s.runAction(msg.action)
+
+	case changeCreatedMsg:
+		s.loading = false
+		if msg.err != nil {
+			s.notice = notice{err: msg.err}
+			return s, nil
+		}
+		return s, push(newChangeScreen(s.client, msg.number))
+
 	case changeActionMsg:
 		s.loading = false
 		s.notice = notice{text: msg.notice, err: msg.err}
@@ -183,6 +195,11 @@ func (s *changeScreen) Update(msg tea.Msg) (screen, tea.Cmd) {
 			return s, s.askRebase()
 		case "W":
 			return s, s.toggleWorkInProgress()
+		case "a":
+			if s.change != nil {
+				s.openActions()
+			}
+			return s, nil
 		case "#":
 			if s.change != nil {
 				s.dialog = newHashtagDialog(s.change, Hashtags, s.setHashtags)
@@ -539,7 +556,7 @@ func (s *changeScreen) Status() string {
 }
 
 func (s *changeScreen) actionHints() []string {
-	hints := []string{"]/[", "comments", "f", "files", "v", "vote"}
+	hints := []string{"]/[", "comments", "f", "files", "v", "vote", "a", "actions"}
 	if s.change != nil && s.change.Status == "NEW" {
 		if s.change.Submittable {
 			hints = append(hints, "S", "submit")

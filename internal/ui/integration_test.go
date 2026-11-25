@@ -2,6 +2,7 @@ package ui
 
 import (
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -272,4 +273,76 @@ func TestIntegrationHashtags(t *testing.T) {
 	if ch, _ := d.srv.Change(4210); strings.Join(ch.Hashtags, ",") != "auto-submit" {
 		t.Fatalf("urgent should be removed, got %v", ch.Hashtags)
 	}
+}
+
+// pickAction opens the actions menu of the change shown and runs the
+// action labelled label.
+func (d *driver) pickAction(label string) {
+	d.t.Helper()
+	d.press("a")
+	menu, ok := d.top().(*changeScreen).dialog.(*actionMenu)
+	if !ok {
+		d.t.Fatalf("a should open the actions menu:\n%s", d.view())
+	}
+	for i, a := range menu.actions {
+		if a.info.Label == label {
+			d.press(strconv.Itoa(i + 1))
+			return
+		}
+	}
+	d.t.Fatalf("no action %q in the menu:\n%s", label, d.view())
+}
+
+func TestIntegrationActions(t *testing.T) {
+	d := newDriver(t, "change:4210")
+	d.press("enter", "a")
+	d.expect("Actions on change 4210", "Abandon", "Cherry Pick", "Edit Hashtags", "Nudge", "Rebase")
+	if v := d.view(); strings.Contains(v, "Move Change") || strings.Contains(v, "Submit ") {
+		t.Fatalf("actions needing input gerardo cannot give, and disabled ones, should be left out:\n%s", v)
+	}
+	d.press("esc")
+
+	d.pickAction("Abandon")
+	d.expect("Abandon change 4210?")
+	d.press("y")
+	if ch, _ := d.srv.Change(4210); ch.Status != "ABANDONED" {
+		t.Fatalf("got status %s", ch.Status)
+	}
+	d.pickAction("Restore")
+	d.press("y")
+	if ch, _ := d.srv.Change(4210); ch.Status != "NEW" {
+		t.Fatalf("got status %s", ch.Status)
+	}
+
+	// The action of a plugin runs after a confirmation.
+	d.pickAction("Nudge")
+	d.expect("Nudge on change 4210?", "Remind the reviewers")
+	d.press("y")
+	if ch, _ := d.srv.Change(4210); ch.Messages[len(ch.Messages)-1].Message != "Reminded the reviewers" {
+		t.Fatalf("the plugin action should have run, got %q", ch.Messages[len(ch.Messages)-1].Message)
+	}
+
+	// A cherry-pick opens the change it creates.
+	d.pickAction("Cherry Pick")
+	for _, r := range "release" {
+		d.press(string(r))
+	}
+	d.press("enter")
+	pick, ok := d.top().(*changeScreen)
+	if !ok || pick.number == 4210 || pick.change == nil || pick.change.Branch != "release" {
+		t.Fatalf("the cherry-pick should be opened, got %T", d.top())
+	}
+}
+
+func TestIntegrationRevert(t *testing.T) {
+	d := newDriver(t, "change:4198")
+	d.press("enter")
+	d.pickAction("Revert")
+	d.press("y")
+	revert, ok := d.top().(*changeScreen)
+	if !ok || revert.change == nil || revert.change.Subject != `Revert "Build with Go 1.25"` {
+		t.Fatalf("the revert should be opened, got %T", d.top())
+	}
+	d.press("f", "j", "enter")
+	d.expect("go 1.24")
 }

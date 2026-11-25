@@ -2,6 +2,7 @@ package gerrit
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -81,6 +82,8 @@ func (c *Client) GetChange(ctx context.Context, id string) (*ChangeInfo, error) 
 		"CURRENT_FILES",
 		"MESSAGES",
 		"SUBMITTABLE",
+		"CHANGE_ACTIONS",
+		"CURRENT_ACTIONS",
 	}}
 	var change ChangeInfo
 	if err := c.get(ctx, "/changes/"+url.PathEscape(id)+"?"+v.Encode(), &change); err != nil {
@@ -227,6 +230,60 @@ func (c *Client) SetHashtags(ctx context.Context, change string, add, remove []s
 		return nil, fmt.Errorf("set hashtags: %w", err)
 	}
 	return hashtags, nil
+}
+
+// Abandon abandons a change.
+func (c *Client) Abandon(ctx context.Context, change string) error {
+	if err := c.do(ctx, http.MethodPost, "/changes/"+url.PathEscape(change)+"/abandon", struct{}{}, nil); err != nil {
+		return fmt.Errorf("abandon: %w", err)
+	}
+	return nil
+}
+
+// Restore restores an abandoned change.
+func (c *Client) Restore(ctx context.Context, change string) error {
+	if err := c.do(ctx, http.MethodPost, "/changes/"+url.PathEscape(change)+"/restore", struct{}{}, nil); err != nil {
+		return fmt.Errorf("restore: %w", err)
+	}
+	return nil
+}
+
+// Revert creates a change reverting a merged one, returning it.
+func (c *Client) Revert(ctx context.Context, change string) (*ChangeInfo, error) {
+	var revert ChangeInfo
+	if err := c.do(ctx, http.MethodPost, "/changes/"+url.PathEscape(change)+"/revert", struct{}{}, &revert); err != nil {
+		return nil, fmt.Errorf("revert: %w", err)
+	}
+	return &revert, nil
+}
+
+// CherryPick creates a change applying a revision onto the branch
+// destination, returning it.
+func (c *Client) CherryPick(ctx context.Context, change, revision, destination string) (*ChangeInfo, error) {
+	p := fmt.Sprintf("/changes/%s/revisions/%s/cherrypick", url.PathEscape(change), url.PathEscape(revision))
+	var pick ChangeInfo
+	if err := c.do(ctx, http.MethodPost, p, CherryPickInput{Destination: destination}, &pick); err != nil {
+		return nil, fmt.Errorf("cherry-pick: %w", err)
+	}
+	return &pick, nil
+}
+
+// RunAction runs the action id, such as one of a plugin, of a change or,
+// when revision is set, of one of its revisions.
+func (c *Client) RunAction(ctx context.Context, change, revision, id string, action ActionInfo) error {
+	p := "/changes/" + url.PathEscape(change)
+	if revision != "" {
+		p += "/revisions/" + url.PathEscape(revision)
+	}
+	method := cmp.Or(action.Method, http.MethodPost)
+	var in any
+	if method == http.MethodPost || method == http.MethodPut {
+		in = struct{}{}
+	}
+	if err := c.do(ctx, method, p+"/"+id, in, nil); err != nil {
+		return fmt.Errorf("%s: %w", cmp.Or(action.Label, id), err)
+	}
+	return nil
 }
 
 // Rebase rebases the current patch set of a change onto base, see RebaseInput.
